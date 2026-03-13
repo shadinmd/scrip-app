@@ -4,47 +4,44 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@/lib/store';
 import { WalletIcon, ArrowUpRightIcon, ArrowDownLeftIcon } from 'lucide-react-native';
 import { LineChart } from 'react-native-wagmi-charts';
+import { formatInTimeZone } from 'date-fns-tz';
+import { subDays } from 'date-fns';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const TIMEZONE = 'Asia/Kolkata';
 
 export default function HomeScreen() {
   const { transactions, fetchTransactions } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchTransactions(1, 50);
+    fetchTransactions({ page: 1, limit: 100 }); // Fetch more to ensure we have a week's data
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTransactions(1, 50);
+    await fetchTransactions({ page: 1, limit: 100 });
     setRefreshing(false);
   };
 
   const chartData = useMemo(() => {
-    if (transactions.length === 0) {
-      return [{ timestamp: Date.now(), value: 0 }];
-    }
-
-    // Get the most recent 3 dates that have transactions
-    const uniqueDates = Array.from(new Set(transactions.map((t) => t.date)))
-      .sort((a, b) => b.localeCompare(a))
-      .slice(0, 3)
-      .reverse();
-
-    const data = uniqueDates.map((dateString) => {
+    const data = [];
+    const today = new Date();
+    
+    // Generate data for the last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(today, i);
+      const dateString = formatInTimeZone(date, TIMEZONE, 'yyyy-MM-dd');
+      
       const dayTotal = transactions
         .filter((t) => t.date === dateString)
         .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0);
 
-      return {
-        timestamp: new Date(dateString).getTime(),
+      data.push({
+        timestamp: date.getTime(),
         value: dayTotal,
-      };
-    });
-
-    if (data.length === 0) {
-      return [{ timestamp: Date.now(), value: 0 }];
+        label: formatInTimeZone(date, TIMEZONE, 'EEE'), // Short day name
+      });
     }
 
     return data;
@@ -53,7 +50,7 @@ export default function HomeScreen() {
   return (
     <ScrollView
       className="flex-1 bg-background"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}>
       <View className="px-6 pt-6">
         {/* Balance Card */}
         <View className="rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -82,14 +79,14 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Recent Activity Chart */}
+      {/* Weekly Activity Chart */}
       <View className="mt-8 px-6">
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-            Activity (Last 3 Data Days)
+            Weekly Activity
           </Text>
           <Text className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">
-            Daily Total
+            Last 7 Days
           </Text>
         </View>
         <View className="overflow-hidden rounded-2xl border border-border bg-card p-4">
@@ -106,15 +103,15 @@ export default function HomeScreen() {
               </LineChart.CursorCrosshair>
             </LineChart>
             
-            {/* Simple Y-Axis Labels */}
-            <View className="flex-row justify-between mt-2 px-2">
+            {/* Weekly Labels */}
+            <View className="flex-row justify-between mt-4">
               {chartData.map((d, i) => (
                 <View key={i} className="items-center">
                   <Text className="text-[10px] font-bold text-muted-foreground">
-                    {new Date(d.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    {d.label}
                   </Text>
-                  <Text className="text-[11px] font-bold text-foreground mt-0.5">
-                    ₹{d.value.toFixed(0)}
+                  <Text className="text-[9px] font-bold text-foreground/60 mt-0.5">
+                    {d.value > 0 ? `₹${(d.value / 1000).toFixed(1)}k` : '0'}
                   </Text>
                 </View>
               ))}
@@ -149,8 +146,6 @@ export default function HomeScreen() {
 }
 
 const TransactionItem = ({ transaction }: { transaction: any }) => {
-  const isIncome = parseFloat(transaction.amount) > 0;
-
   return (
     <TouchableOpacity activeOpacity={0.7} className="flex-row items-center justify-between py-3">
       <View className="flex-row items-center flex-1 mr-4">
