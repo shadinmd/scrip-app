@@ -48,6 +48,14 @@ interface Loan {
 interface AuthState {
   user: User | null;
   transactions: Transaction[];
+  recentTransactions: Transaction[];
+  summary: {
+    currentMonth: {
+      expenses: number;
+      count: number;
+    };
+    dailyActivity: { date: string; total: number }[];
+  } | null;
   transactionPagination: {
     page: number;
     totalPages: number;
@@ -61,6 +69,7 @@ interface AuthState {
   setLoading: (isLoading: boolean) => void;
   setLoggedIn: (isLoggedIn: boolean) => void;
   fetchTransactions: (params?: { page?: number; limit?: number; start_date?: string; end_date?: string; categoryIds?: number[] }, append?: boolean) => Promise<void>;
+  fetchSummary: () => Promise<void>;
   fetchLoans: (page?: number, limit?: number) => Promise<void>;
   fetchCategories: () => Promise<void>;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
@@ -71,6 +80,8 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   transactions: [],
+  recentTransactions: [],
+  summary: null,
   transactionPagination: {
     page: 1,
     totalPages: 1,
@@ -107,6 +118,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }));
     } catch (error) {
       console.error('Error fetching transactions:', error);
+    }
+  },
+
+  fetchSummary: async () => {
+    try {
+      const response = await api.get('/transactions/summary');
+      const { currentMonth, dailyActivity, recentTransactions } = response.data;
+      set({ 
+        summary: { currentMonth, dailyActivity },
+        recentTransactions: recentTransactions
+      });
+    } catch (error) {
+      console.error('Error fetching summary:', error);
     }
   },
 

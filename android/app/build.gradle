@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.scrip'
+    namespace 'com.anonymous.scrip.dev'
     defaultConfig {
-        applicationId 'com.anonymous.scrip'
+        applicationId 'com.anonymous.scrip.dev'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

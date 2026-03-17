@@ -1,6 +1,6 @@
 import { formatInTimeZone } from 'date-fns-tz';
 
-const TIMEZONE = 'Asia/Kolkata';
+export const TIMEZONE = 'Asia/Kolkata';
 
 export const getTodayStr = () => {
   return formatInTimeZone(new Date(), TIMEZONE, 'yyyy-MM-dd');

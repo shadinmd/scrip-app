@@ -1,138 +1,171 @@
 import { View, ScrollView, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/store';
-import { WalletIcon, ArrowUpRightIcon, ArrowDownLeftIcon } from 'lucide-react-native';
+import { ArrowUpRightIcon, WalletIcon } from 'lucide-react-native';
 import { LineChart } from 'react-native-wagmi-charts';
 import { formatInTimeZone } from 'date-fns-tz';
-import { subDays } from 'date-fns';
+import { startOfMonth, addMonths, endOfMonth, format } from 'date-fns';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { TIMEZONE } from '@/lib/date-utils';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const TIMEZONE = 'Asia/Kolkata';
 
 export default function HomeScreen() {
-  const { transactions, fetchTransactions } = useAuthStore();
+  const { summary, recentTransactions, loans, fetchSummary, fetchLoans } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
+  const router = useRouter();
 
-  useEffect(() => {
-    fetchTransactions({ page: 1, limit: 100 }); // Fetch more to ensure we have a week's data
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      Promise.all([fetchSummary(), fetchLoans()]);
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTransactions({ page: 1, limit: 100 });
+    await Promise.all([fetchSummary(), fetchLoans()]);
     setRefreshing(false);
   };
 
-  const chartData = useMemo(() => {
-    const data = [];
+  const currentMonthSummary = useMemo(() => {
+    if (!summary) return { expenses: 0, count: 0, dailyAvg: 0 };
     const today = new Date();
-    
-    // Generate data for the last 7 days
-    for (let i = 6; i >= 0; i--) {
-      const date = subDays(today, i);
-      const dateString = formatInTimeZone(date, TIMEZONE, 'yyyy-MM-dd');
-      
-      const dayTotal = transactions
-        .filter((t) => t.date === dateString)
-        .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0);
 
-      data.push({
-        timestamp: date.getTime(),
-        value: dayTotal,
-        label: formatInTimeZone(date, TIMEZONE, 'EEE'), // Short day name
+    return {
+      expenses: summary.currentMonth.expenses,
+      count: summary.currentMonth.count,
+      dailyAvg: summary.currentMonth.expenses / Math.max(today.getDate(), 1),
+    };
+  }, [summary]);
+
+  const nextMonthInstallments = useMemo(() => {
+    const nextMonth = addMonths(new Date(), 1);
+    const start = format(startOfMonth(nextMonth), 'yyyy-MM-dd');
+    const end = format(endOfMonth(nextMonth), 'yyyy-MM-dd');
+
+    let total = 0;
+    let count = 0;
+
+    loans.forEach((loan) => {
+      loan.installments.forEach((inst) => {
+        if (inst.date >= start && inst.date <= end) {
+          total += parseFloat(inst.amount);
+          count++;
+        }
       });
-    }
+    });
 
-    return data;
-  }, [transactions]);
+    return { total, count };
+  }, [loans]);
+
+  const chartData = useMemo(() => {
+    if (!summary) return [];
+    
+    return summary.dailyActivity.map(day => {
+      const date = new Date(day.date);
+      return {
+        timestamp: date.getTime(),
+        value: day.total,
+        label: formatInTimeZone(date, TIMEZONE, 'EEE'),
+      };
+    });
+  }, [summary]);
 
   return (
     <ScrollView
       className="flex-1 bg-background"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}>
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+      }>
       <View className="px-6 pt-6">
-        {/* Balance Card */}
-        <View className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <View className="rounded-[32px] border border-border bg-card p-7 shadow-sm">
           <View className="mb-1 flex-row items-center gap-2">
             <WalletIcon size={14} className="text-muted-foreground" />
             <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total Balance
+              Month Summary
             </Text>
           </View>
-          <Text className="text-3xl font-bold tracking-tight text-foreground">₹12,450.00</Text>
+          <Text className="text-3xl font-bold tracking-tight text-foreground">
+            ₹
+            {currentMonthSummary.expenses.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </Text>
 
-          <View className="mt-6 flex-row gap-10 border-t border-border pt-5">
+          <View className="mt-6 flex-row items-center justify-between border-t border-border/50 pt-5">
             <View>
               <Text className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
-                Income
+                Next Month's Dues
               </Text>
-              <Text className="text-lg font-bold text-green-600 dark:text-green-400">+₹4,200</Text>
+              <Text className="text-lg font-bold text-primary">
+                ₹{nextMonthInstallments.total.toLocaleString()}
+              </Text>
             </View>
-            <View>
+            <View className="h-8 border-l border-border/50" />
+            <View className="items-end">
               <Text className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
-                Expenses
+                Daily Avg
               </Text>
-              <Text className="text-lg font-bold text-destructive">-₹1,850</Text>
+              <Text className="text-lg font-bold text-destructive">
+                ₹
+                {currentMonthSummary.dailyAvg.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}
+              </Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Weekly Activity Chart */}
       <View className="mt-8 px-6">
-        <View className="flex-row justify-between items-center mb-4">
+        <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
             Weekly Activity
           </Text>
-          <Text className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">
+          <Text className="rounded-md bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
             Last 7 Days
           </Text>
         </View>
         <View className="overflow-hidden rounded-2xl border border-border bg-card p-4">
-          <LineChart.Provider data={chartData}>
-            <LineChart height={150} width={SCREEN_WIDTH - 80}>
-              <LineChart.Path color="#525252" width={4}>
-                <LineChart.Gradient color="#525252" opacity={0.2} />
-              </LineChart.Path>
-              <LineChart.CursorCrosshair color="#525252">
-                <LineChart.Tooltip 
-                  textStyle={{ color: '#fff', fontWeight: 'bold' }} 
-                  cursorGlowColor="#525252"
-                />
-              </LineChart.CursorCrosshair>
-            </LineChart>
-            
-            {/* Weekly Labels */}
-            <View className="flex-row justify-between mt-4">
-              {chartData.map((d, i) => (
-                <View key={i} className="items-center">
-                  <Text className="text-[10px] font-bold text-muted-foreground">
-                    {d.label}
-                  </Text>
-                  <Text className="text-[9px] font-bold text-foreground/60 mt-0.5">
-                    {d.value > 0 ? `₹${(d.value / 1000).toFixed(1)}k` : '0'}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </LineChart.Provider>
+          {chartData.length > 0 && (
+            <LineChart.Provider data={chartData}>
+              <LineChart height={150} width={SCREEN_WIDTH - 80}>
+                <LineChart.Path color="#525252" width={4}>
+                  <LineChart.Gradient color="#525252" opacity={0.2} />
+                </LineChart.Path>
+                <LineChart.CursorCrosshair color="#525252">
+                  <LineChart.Tooltip textStyle={{ color: '#fff', fontWeight: 'bold' }} />
+                </LineChart.CursorCrosshair>
+              </LineChart>
+
+              <View className="mt-4 flex-row justify-between">
+                {chartData.map((d, i) => (
+                  <View key={i} className="items-center">
+                    <Text className="text-[10px] font-bold text-muted-foreground">{d.label}</Text>
+                    <Text className="mt-0.5 text-[9px] font-bold text-foreground/60">
+                      {d.value > 0 ? `₹${(d.value / 1000).toFixed(1)}k` : '0'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </LineChart.Provider>
+          )}
         </View>
       </View>
 
-      {/* Recent Transactions List */}
       <View className="mb-8 mt-10 px-6">
         <View className="mb-6 flex-row items-center justify-between">
           <Text className="text-2xl font-bold tracking-tight">Recent Activity</Text>
-          <TouchableOpacity activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.push('/transactions')} activeOpacity={0.7}>
             <Text className="text-sm font-bold text-primary">See All</Text>
           </TouchableOpacity>
         </View>
 
         <View className="gap-2">
-          {transactions.slice(0, 5).length > 0 ? (
-            transactions
-              .slice(0, 5)
+          {recentTransactions.length > 0 ? (
+            recentTransactions
               .map((item) => <TransactionItem key={item.id} transaction={item} />)
           ) : (
             <View className="items-center justify-center rounded-2xl border-2 border-dashed border-muted bg-muted/20 py-10">
@@ -148,12 +181,11 @@ export default function HomeScreen() {
 const TransactionItem = ({ transaction }: { transaction: any }) => {
   return (
     <TouchableOpacity activeOpacity={0.7} className="flex-row items-center justify-between py-3">
-      <View className="flex-row items-center flex-1 mr-4">
-        <View
-          className="h-12 w-12 items-center justify-center rounded-2xl bg-destructive">
+      <View className="mr-4 flex-1 flex-row items-center">
+        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-destructive">
           <ArrowUpRightIcon size={20} color="#fff" />
         </View>
-        <View className="flex-1 ml-4">
+        <View className="ml-4 flex-1">
           <Text className="text-base font-bold text-foreground" numberOfLines={1}>
             {transaction.description}
           </Text>

@@ -68,14 +68,12 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-    >
+      style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
           keyboardShouldPersistTaps="handled"
-          className="bg-background px-12 py-10"
-        >
+          className="bg-background px-12 py-10">
           <View className="mb-10 items-center">
             <Text className="text-6xl font-extrabold tracking-tighter text-primary">Scrip</Text>
           </View>

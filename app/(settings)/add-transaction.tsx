@@ -35,7 +35,7 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 export default function AddTransactionScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { categories, fetchCategories, fetchTransactions } = useAuthStore();
+  const { categories, fetchCategories, fetchTransactions, fetchSummary } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -79,7 +79,10 @@ export default function AddTransactionScreen() {
       };
 
       await api.post('/transactions', formattedData);
-      await fetchTransactions({ page: 1, limit: 20 });
+      await Promise.all([
+        fetchTransactions({ page: 1, limit: 20 }),
+        fetchSummary()
+      ]);
       Alert.alert('Success', 'Transaction added successfully');
       router.back();
     } catch (error: any) {

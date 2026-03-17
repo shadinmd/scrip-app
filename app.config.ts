@@ -1,0 +1,50 @@
+import { ExpoConfig } from 'expo/config';
+
+export default (): ExpoConfig => {
+  const env = process.env.EXPO_PUBLIC_NODE_ENV ?? 'development';
+
+  const isDev = env === 'development';
+
+  const packageName = isDev ? 'com.anonymous.scrip.dev' : 'com.anonymous.scrip';
+  const icon = isDev ? './assets/images/dev-icon.png' : './assets/images/icon.png';
+  const name = isDev ? 'scrip dev' : 'scrip';
+
+  return {
+    name,
+    slug: 'scrip',
+    version: '1.0.0',
+    orientation: 'portrait',
+    icon,
+    scheme: 'scrip',
+    userInterfaceStyle: 'automatic',
+    newArchEnabled: true,
+    splash: {
+      image: './assets/images/splash.png',
+      resizeMode: 'contain',
+      backgroundColor: '#000000',
+    },
+    assetBundlePatterns: ['**/*'],
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: packageName,
+    },
+    android: {
+      edgeToEdgeEnabled: true,
+      adaptiveIcon: {
+        foregroundImage: icon,
+        backgroundColor: '#000000',
+      },
+      package: packageName,
+    },
+    plugins: ['expo-router', 'expo-secure-store', '@react-native-community/datetimepicker'],
+    experiments: {
+      typedRoutes: true,
+    },
+    extra: {
+      router: {},
+      eas: {
+        projectId: 'a8c0798a-7e6e-4fbb-989e-6e43277845a1',
+      },
+    },
+  };
+};
