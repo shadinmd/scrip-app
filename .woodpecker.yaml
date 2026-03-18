@@ -2,6 +2,7 @@ steps:
   build:
     image: reactnativecommunity/react-native-android
     environment:
+      CI: "true"
       EXPO_TOKEN:
         from_secret: expo_token
     commands:
