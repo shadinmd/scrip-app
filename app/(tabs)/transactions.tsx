@@ -8,10 +8,11 @@ import {
 import { Text } from '@/components/ui/text';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuthStore } from '@/lib/store';
-import { ArrowUpRightIcon, CalendarIcon, XIcon } from 'lucide-react-native';
+import { ArrowUpRightIcon, CalendarIcon, XIcon, PlusIcon } from 'lucide-react-native';
 import { MonthPicker } from '@/components/ui/month-picker';
 import { getCurrentMonthStr } from '@/lib/date-utils';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
+import { useRouter } from 'expo-router';
 
 interface TransactionHeader {
   type: 'header';
@@ -30,6 +31,7 @@ interface TransactionItemData {
 type FlattenedItem = TransactionHeader | TransactionItemData;
 
 export default function TransactionsScreen() {
+  const router = useRouter();
   const {
     transactions = [],
     categories = [],
@@ -135,12 +137,12 @@ export default function TransactionsScreen() {
   const renderHeader = () => (
     <View className="border-b border-border bg-background">
       <View className="pb-4 pt-4">
-        <View>
+        <View className="mb-4 flex-row items-center justify-between px-6">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="mb-4 px-6"
-            contentContainerStyle={{ gap: 8 }}>
+            className="flex-1"
+            contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
             <TouchableOpacity
               onPress={() => setShowStartPicker(true)}
               className={`flex-row items-center gap-2 rounded-full border px-4 py-2 ${startDate ? 'border-primary bg-primary' : 'border-border bg-muted/20'}`}>
@@ -170,6 +172,12 @@ export default function TransactionsScreen() {
               </TouchableOpacity>
             )}
           </ScrollView>
+
+          <TouchableOpacity
+            onPress={() => router.push('/(settings)/add-transaction')}
+            className="ml-4 h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm">
+            <PlusIcon size={24} color="#000" />
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -229,7 +237,6 @@ export default function TransactionsScreen() {
         }
         renderItem={renderListItem}
         getItemType={(item) => item.type}
-        estimatedItemSize={70}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={() =>
           loadingMore ? (

@@ -41,3 +41,14 @@ expo-env.d.ts
 # @end expo-cli
 
 build*.apk
+
+node_modules
+.expo
+android
+ios
+.gradle
+.idea
+dist
+
+*services.json
+ScripDevGoogleService-Info.plist
