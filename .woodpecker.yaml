@@ -9,13 +9,27 @@ steps:
       - npm install
       - eas build --platform android --local --non-interactive
       - cp *.apk app.apk || cp *.aab app.aab
+    when:
+      event:
+        - push
+        - manual
+      branch:
+        - main
+        - dev
 
   release:
     image: plugins/github-release
     settings:
       api_key:
-        from_secret: github_token
+        from_secret: docker_password
       files:
         - app.apk
         - app.aab
       title: "EAS Build"
+    when:
+      event:
+        - push
+        - manual
+      branch:
+        - main
+        - dev
