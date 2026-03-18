@@ -1,13 +1,15 @@
 import { ExpoConfig } from 'expo/config';
 
 export default (): ExpoConfig => {
-  const env = process.env.EXPO_PUBLIC_NODE_ENV ?? 'development';
-
-  const isDev = env === 'development';
+  const env = process.env.EAS_BUILD_PROFILE ?? 'development';
+  const isDev = env !== 'production';
 
   const packageName = isDev ? 'com.anonymous.scrip.dev' : 'com.anonymous.scrip';
   const icon = isDev ? './assets/images/dev-icon.png' : './assets/images/icon.png';
   const name = isDev ? 'scrip dev' : 'scrip';
+  const androidGoogleServiceFile = isDev
+    ? './scrip-dev-google-services.json'
+    : './google-services.json';
 
   return {
     name,
@@ -29,6 +31,7 @@ export default (): ExpoConfig => {
       bundleIdentifier: packageName,
     },
     android: {
+      googleServicesFile: androidGoogleServiceFile,
       edgeToEdgeEnabled: true,
       adaptiveIcon: {
         foregroundImage: icon,
@@ -36,7 +39,12 @@ export default (): ExpoConfig => {
       },
       package: packageName,
     },
-    plugins: ['expo-router', 'expo-secure-store', '@react-native-community/datetimepicker'],
+    plugins: [
+      'expo-router',
+      'expo-secure-store',
+      '@react-native-community/datetimepicker',
+      'expo-notifications',
+    ],
     experiments: {
       typedRoutes: true,
     },

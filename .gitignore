@@ -49,3 +49,6 @@ ios
 .gradle
 .idea
 dist
+
+*services.json
+ScripDevGoogleService-Info.plist
