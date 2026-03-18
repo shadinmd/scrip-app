@@ -6,9 +6,9 @@ steps:
       EXPO_TOKEN:
         from_secret: expo_token
       GOOGLE_SERVICES_JSON_DEV:
-        from_secret: google_services_json_dev
+        from_secret: GOOGLE_SERVICES_JSON_DEV
       GOOGLE_SERVICES_JSON_PROD:
-        from_secret: google_services_json_prod
+        from_secret: GOOGLE_SERVICES_JSON_PROD
     commands:
       - npm install -g eas-cli
       - npm install
