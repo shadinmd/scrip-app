@@ -1,0 +1,21 @@
+steps:
+  build:
+    image: reactnativecommunity/react-native-android
+    environment:
+      EXPO_TOKEN:
+        from_secret: expo_token
+    commands:
+      - npm install -g eas-cli
+      - npm install
+      - eas build --platform android --local --non-interactive
+      - cp *.apk app.apk || cp *.aab app.aab
+
+  release:
+    image: plugins/github-release
+    settings:
+      api_key:
+        from_secret: github_token
+      files:
+        - app.apk
+        - app.aab
+      title: "EAS Build"
