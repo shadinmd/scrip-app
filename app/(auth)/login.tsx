@@ -1,6 +1,5 @@
 import {
   View,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -15,15 +14,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
-import { Checkbox } from '@/components/ui/checkbox';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { useState } from 'react';
+import Toast from 'react-native-toast-message';
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  rememberMe: z.boolean().default(false),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -41,7 +39,6 @@ const LoginScreen = () => {
     defaultValues: {
       email: '',
       password: '',
-      rememberMe: false,
     },
   });
 
@@ -59,7 +56,11 @@ const LoginScreen = () => {
     } catch (error: any) {
       console.error('Login error:', error);
       const message = error.response?.data?.message || 'Something went wrong. Please try again.';
-      Alert.alert('Login Failed', message);
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: message,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -132,22 +133,6 @@ const LoginScreen = () => {
                   <Text className="text-sm text-destructive">{errors.password.message}</Text>
                 )}
               </View>
-              <View className="flex-row items-center gap-3">
-                <Controller
-                  control={control}
-                  name="rememberMe"
-                  render={({ field: { onChange, value } }) => (
-                    <Checkbox
-                      checked={value}
-                      onCheckedChange={onChange}
-                      aria-labelledby="remember-label"
-                    />
-                  )}
-                />
-                <Label nativeID="remember-label" className="text-sm">
-                  Remember me
-                </Label>
-              </View>
             </View>
             <View className="pt-8">
               <Button
@@ -161,10 +146,6 @@ const LoginScreen = () => {
                 )}
               </Button>
             </View>
-          </View>
-          <View className="mt-12 flex-row justify-center gap-1">
-            <Text className="text-muted-foreground">Don't have an account?</Text>
-            <Text className="font-semibold text-primary">Sign Up</Text>
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>

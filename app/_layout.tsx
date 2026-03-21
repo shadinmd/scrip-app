@@ -13,6 +13,8 @@ import { Sidebar } from '@/components/Sidebar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Notifications from 'expo-notifications';
 import { getPushToken, updatePushTokenOnBackend } from '@/lib/messaging';
+import Toast from 'react-native-toast-message';
+import { toastConfig } from '@/lib/toast-config';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -83,6 +85,7 @@ export default function RootLayout() {
           </Stack>
           {isLoggedIn && <Sidebar />}
           <PortalHost />
+          <Toast config={toastConfig} />
         </View>
       </ThemeProvider>
     </GestureHandlerRootView>

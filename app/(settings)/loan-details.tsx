@@ -2,22 +2,43 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   ScrollView,
-  Alert,
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Text } from '@/components/ui/text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { CheckCircle2Icon, CircleIcon, Trash2Icon, CalendarIcon } from 'lucide-react-native';
+import {
+  CheckCircle2Icon,
+  CircleIcon,
+  Trash2Icon,
+  CalendarIcon,
+  PencilIcon,
+} from 'lucide-react-native';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function LoanDetailsScreen() {
   const { id } = useLocalSearchParams();
   const [loan, setLoan] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const { fetchLoans } = useAuthStore();
   const router = useRouter();
 
@@ -27,7 +48,11 @@ export default function LoanDetailsScreen() {
       setLoan(response.data);
     } catch (error) {
       console.error('Error fetching loan details:', error);
-      Alert.alert('Error', 'Could not load loan details');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Could not load loan details',
+      });
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -44,43 +69,80 @@ export default function LoanDetailsScreen() {
   };
 
   const handleTogglePaid = async (installmentId: number) => {
+    const target = loan.installments.find((i: any) => i.id === installmentId);
+    if (!target) return;
+
+    const chronological = [...loan.installments].sort((a, b) => a.date.localeCompare(b.date));
+    const currentIndex = chronological.findIndex((i: any) => i.id === installmentId);
+
+    if (!target.isPaid) {
+      const previousUnpaid = chronological.slice(0, currentIndex).find((i: any) => !i.isPaid);
+      if (previousUnpaid) {
+        Toast.show({
+          type: 'error',
+          text1: 'Out of Order',
+          text2: 'Please pay earlier installments first.',
+        });
+        return;
+      }
+    } else {
+      const laterPaid = chronological.slice(currentIndex + 1).find((i: any) => i.isPaid);
+      if (laterPaid) {
+        Toast.show({
+          type: 'error',
+          text1: 'Action Blocked',
+          text2: 'Please unmark later installments first.',
+        });
+        return;
+      }
+    }
+
     try {
       await api.patch(`/loans/installments/${installmentId}/toggle-paid`);
-      setLoan((prev: any) => ({
-        ...prev,
-        installments: prev.installments.map((inst: any) =>
-          inst.id === installmentId ? { ...inst, isPaid: !inst.isPaid } : inst
-        ),
-      }));
+
+      const isMarkingPaid = !target.isPaid;
+
+      setLoan((prev: any) => {
+        const updatedInstallments = prev.installments.map((inst: any) =>
+          inst.id === installmentId ? { ...inst, isPaid: isMarkingPaid } : inst
+        );
+
+        // Trigger confetti and celebration if this was the last unpaid installment
+        if (isMarkingPaid) {
+          const remainingUnpaid = updatedInstallments.filter((i: any) => !i.isPaid).length;
+          if (remainingUnpaid === 0) {
+            setShowConfetti(true);
+            setShowCelebration(true);
+          }
+        }
+
+        return { ...prev, installments: updatedInstallments };
+      });
+
       fetchLoans();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling paid state:', error);
-      Alert.alert('Error', 'Could not update installment');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.response?.data?.message || 'Could not update installment',
+      });
     }
   };
 
-  const handleDeleteLoan = async () => {
-    Alert.alert(
-      'Delete Loan',
-      'Are you sure you want to delete this loan and all its installments?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/loans/${id}`);
-              await fetchLoans();
-              router.back();
-            } catch (error) {
-              console.error('Error deleting loan:', error);
-              Alert.alert('Error', 'Could not delete loan');
-            }
-          },
-        },
-      ]
-    );
+  const confirmDelete = async () => {
+    try {
+      await api.delete(`/loans/${id}`);
+      await fetchLoans();
+      router.back();
+    } catch (error) {
+      console.error('Error deleting loan:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Could not delete loan',
+      });
+    }
   };
 
   // Sort and number installments
@@ -140,11 +202,37 @@ export default function LoanDetailsScreen() {
                 Started on {new Date(loan.createdAt).toLocaleDateString()}
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={handleDeleteLoan}
-              className="h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10">
-              <Trash2Icon size={22} color="#ef4444" />
-            </TouchableOpacity>
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/(settings)/edit-loan', params: { id } })}
+                className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                <PencilIcon size={22} color="#fff" />
+              </TouchableOpacity>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <TouchableOpacity className="h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10">
+                    <Trash2Icon size={22} color="#ef4444" />
+                  </TouchableOpacity>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Loan</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this loan and all its installments? This
+                      action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>
+                      <Text>Cancel</Text>
+                    </AlertDialogCancel>
+                    <AlertDialogAction className="bg-destructive" onPress={confirmDelete}>
+                      <Text>Delete</Text>
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </View>
           </View>
 
           {/* Progress Card */}
@@ -233,6 +321,46 @@ export default function LoanDetailsScreen() {
           </View>
         </View>
       </ScrollView>
+      {showConfetti && (
+        <View
+          style={{ position: 'absolute', bottom: -20, left: 0, right: 0, height: 0 }}
+          pointerEvents="none">
+          <ConfettiCannon
+            count={150}
+            origin={{ x: 0, y: 0 }}
+            autoStart={true}
+            fadeOut={true}
+            explosionSpeed={900}
+            fallSpeed={2500}
+          />
+          <ConfettiCannon
+            count={150}
+            origin={{ x: Dimensions.get('screen').width, y: 0 }}
+            autoStart={true}
+            fadeOut={true}
+            explosionSpeed={900}
+            fallSpeed={2500}
+            onAnimationEnd={() => setShowConfetti(false)}
+          />
+        </View>
+      )}
+
+      <AlertDialog open={showCelebration} onOpenChange={setShowCelebration}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Loan Completed! 🎉</AlertDialogTitle>
+            <AlertDialogDescription>
+              Congratulations! You've successfully paid off all installments for "{loan?.name}".
+              Another debt cleared!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onPress={() => setShowCelebration(false)}>
+              <Text>Awesome!</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </View>
   );
 }

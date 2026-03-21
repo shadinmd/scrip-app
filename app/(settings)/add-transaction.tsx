@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
-  Alert,
   ActivityIndicator,
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,11 +81,19 @@ const AddTransactionScreen = () => {
 
       await api.post('/transactions', formattedData);
       await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
-      Alert.alert('Success', 'Transaction added successfully');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Transaction added successfully',
+      });
       router.back();
     } catch (error: any) {
       console.error('Error adding transaction:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Something went wrong');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.response?.data?.message || 'Something went wrong',
+      });
     } finally {
       setIsSubmitting(false);
     }
