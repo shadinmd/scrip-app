@@ -7,12 +7,13 @@ import {
 } from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useAuthStore } from '@/lib/store';
-import { ArrowUpRightIcon, CalendarIcon, XIcon, PlusIcon } from 'lucide-react-native';
+import { useStore } from '@/lib/store';
+import { ArrowUpRightIcon, CalendarIcon, XIcon, PlusIcon, AlertCircle } from 'lucide-react-native';
 import { MonthPicker } from '@/components/ui/month-picker';
 import { getCurrentMonthStr } from '@/lib/date-utils';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface TransactionHeader {
   type: 'header';
@@ -36,9 +37,10 @@ export default function TransactionsScreen() {
     transactions = [],
     categories = [],
     transactionPagination,
+    error,
     fetchTransactions,
     fetchCategories,
-  } = useAuthStore();
+  } = useStore();
 
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -136,6 +138,14 @@ export default function TransactionsScreen() {
 
   const renderHeader = () => (
     <View className="border-b border-border bg-background">
+      {error && (
+        <View className="px-6 pt-4">
+          <Alert variant="destructive" icon={AlertCircle}>
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </View>
+      )}
       <View className="pb-4 pt-4">
         <View className="mb-4 flex-row items-center justify-between px-6">
           <ScrollView

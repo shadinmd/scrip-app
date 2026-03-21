@@ -1,10 +1,10 @@
 import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { UserIcon, ChevronRightIcon, MailIcon, CalendarIcon, HashIcon } from 'lucide-react-native';
 
 const ProfileScreen = () => {
-  const { user } = useAuthStore();
+  const { user } = useStore();
 
   const ProfileItem = ({ icon: Icon, label, value, showChevron = false }: any) => (
     <TouchableOpacity

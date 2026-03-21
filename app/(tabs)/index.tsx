@@ -1,18 +1,19 @@
 import { View, ScrollView, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useState, useMemo, useCallback } from 'react';
-import { useAuthStore } from '@/lib/store';
-import { ArrowUpRightIcon, WalletIcon } from 'lucide-react-native';
+import { useStore } from '@/lib/store';
+import { ArrowUpRightIcon, WalletIcon, AlertCircle } from 'lucide-react-native';
 import { LineChart } from 'react-native-wagmi-charts';
 import { formatInTimeZone } from 'date-fns-tz';
 import { startOfMonth, addMonths, endOfMonth, format } from 'date-fns';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { TIMEZONE } from '@/lib/date-utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function HomeScreen() {
-  const { summary, recentTransactions, loans, fetchSummary, fetchLoans } = useAuthStore();
+  const { summary, recentTransactions, loans, error, fetchSummary, fetchLoans } = useStore();
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
@@ -61,8 +62,8 @@ export default function HomeScreen() {
 
   const chartData = useMemo(() => {
     if (!summary) return [];
-    
-    return summary.dailyActivity.map(day => {
+
+    return summary.dailyActivity.map((day) => {
       const date = new Date(day.date);
       return {
         timestamp: date.getTime(),
@@ -78,6 +79,14 @@ export default function HomeScreen() {
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
       }>
+      {error && (
+        <View className="px-6 pt-4">
+          <Alert variant="destructive" icon={AlertCircle}>
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </View>
+      )}
       <View className="px-6 pt-6">
         <View className="rounded-[32px] border border-border bg-card p-7 shadow-sm">
           <View className="mb-1 flex-row items-center gap-2">
@@ -165,8 +174,7 @@ export default function HomeScreen() {
 
         <View className="gap-2">
           {recentTransactions.length > 0 ? (
-            recentTransactions
-              .map((item) => <TransactionItem key={item.id} transaction={item} />)
+            recentTransactions.map((item) => <TransactionItem key={item.id} transaction={item} />)
           ) : (
             <View className="items-center justify-center rounded-2xl border-2 border-dashed border-muted bg-muted/20 py-10">
               <Text className="font-medium text-muted-foreground">No transactions yet</Text>

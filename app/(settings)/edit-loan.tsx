@@ -16,7 +16,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PlusIcon, TrashIcon, XIcon, CalendarIcon, CoinsIcon } from 'lucide-react-native';
@@ -79,7 +79,7 @@ export default function EditLoanScreen() {
   // Adjust pending states
   const [adjustAmount, setAdjustAmount] = useState('');
 
-  const { fetchLoans } = useAuthStore();
+  const { fetchLoans } = useStore();
   const router = useRouter();
 
   const {

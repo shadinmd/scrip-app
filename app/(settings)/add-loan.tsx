@@ -16,7 +16,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { useRouter } from 'expo-router';
 import { PlusIcon, TrashIcon, SparklesIcon, XIcon, CalendarIcon } from 'lucide-react-native';
 import { MonthPicker } from '@/components/ui/month-picker';
@@ -72,7 +72,7 @@ export default function AddLoanScreen() {
   const [showStartPicker, setShowStartMonthPicker] = useState(false);
   const [showEndPicker, setShowEndMonthPicker] = useState(false);
 
-  const { fetchLoans } = useAuthStore();
+  const { fetchLoans } = useStore();
   const router = useRouter();
 
   const {

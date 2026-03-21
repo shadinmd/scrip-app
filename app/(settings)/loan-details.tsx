@@ -11,7 +11,7 @@ import Toast from 'react-native-toast-message';
 import { Text } from '@/components/ui/text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import api from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import {
   CheckCircle2Icon,
   CircleIcon,
@@ -39,7 +39,7 @@ export default function LoanDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const { fetchLoans } = useAuthStore();
+  const { fetchLoans } = useStore();
   const router = useRouter();
 
   const fetchLoanDetails = async () => {

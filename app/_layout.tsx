@@ -6,7 +6,7 @@ import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { View, ActivityIndicator } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/Sidebar';
@@ -20,7 +20,7 @@ export { ErrorBoundary } from 'expo-router';
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
-  const { checkAuth, isLoading, isLoggedIn } = useAuthStore();
+  const { checkAuth, isLoading, isLoggedIn } = useStore();
 
   const notificationListener = useRef<Notifications.EventSubscription>(null);
   const responseListener = useRef<Notifications.EventSubscription>(null);

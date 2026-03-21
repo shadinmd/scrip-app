@@ -16,7 +16,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { useRouter } from 'expo-router';
 import { getTodayStr, formatDisplayDate } from '@/lib/date-utils';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -36,7 +36,7 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 const AddTransactionScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { categories, fetchCategories, fetchTransactions, fetchSummary } = useAuthStore();
+  const { categories, fetchCategories, fetchTransactions, fetchSummary } = useStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -226,4 +226,4 @@ const AddTransactionScreen = () => {
   );
 };
 
-export default AddTransactionScreen
+export default AddTransactionScreen;

@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import api from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { useState } from 'react';
 import Toast from 'react-native-toast-message';
 
@@ -27,7 +27,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const LoginScreen = () => {
-  const login = useAuthStore((state) => state.login);
+  const login = useStore((state) => state.login);
   const [isLoading, setIsLoading] = useState(false);
 
   const {
