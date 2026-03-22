@@ -74,8 +74,6 @@ export default function EditLoanScreen() {
 
   const todayStr = getTodayStr();
 
-  const today = new Date();
-
   // Adjust pending states
   const [adjustAmount, setAdjustAmount] = useState('');
 

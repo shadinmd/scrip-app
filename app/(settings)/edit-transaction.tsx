@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
-  Alert,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Text } from '@/components/ui/text';
@@ -22,6 +21,16 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatDisplayDate } from '@/lib/date-utils';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CalendarIcon, Trash2Icon } from 'lucide-react-native';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const transactionSchema = z.object({
   amount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -40,6 +49,9 @@ const EditTransactionScreen = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showConfirmUpdate, setShowConfirmUpdate] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [pendingData, setPendingData] = useState<TransactionFormValues | null>(null);
   const { categories, fetchCategories, fetchTransactions, fetchSummary } = useStore();
   const router = useRouter();
 
@@ -101,12 +113,14 @@ const EditTransactionScreen = () => {
     }
   };
 
-  const onSubmit = async (data: TransactionFormValues) => {
+  const handleConfirmUpdate = async () => {
+    if (!pendingData) return;
     setIsSubmitting(true);
+    setShowConfirmUpdate(false);
     try {
       const formattedData = {
-        ...data,
-        amount: parseFloat(data.amount),
+        ...pendingData,
+        amount: parseFloat(pendingData.amount),
       };
 
       await api.put(`/transactions/${id}`, formattedData);
@@ -126,39 +140,41 @@ const EditTransactionScreen = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setPendingData(null);
     }
   };
 
-  const handleDelete = async () => {
-    Alert.alert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setIsDeleting(true);
-          try {
-            await api.delete(`/transactions/${id}`);
-            await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
-            Toast.show({
-              type: 'success',
-              text1: 'Success',
-              text2: 'Transaction deleted successfully',
-            });
-            router.back();
-          } catch (error: any) {
-            console.error('Error deleting transaction:', error);
-            Toast.show({
-              type: 'error',
-              text1: 'Error',
-              text2: error.response?.data?.message || 'Failed to delete transaction',
-            });
-          } finally {
-            setIsDeleting(false);
-          }
-        },
-      },
-    ]);
+  const onSubmit = (data: TransactionFormValues) => {
+    setPendingData(data);
+    setShowConfirmUpdate(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    setShowConfirmDelete(false);
+    try {
+      await api.delete(`/transactions/${id}`);
+      await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Transaction deleted successfully',
+      });
+      router.back();
+    } catch (error: any) {
+      console.error('Error deleting transaction:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.response?.data?.message || 'Failed to delete transaction',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDelete = () => {
+    setShowConfirmDelete(true);
   };
 
   if (isLoading) {
@@ -306,6 +322,44 @@ const EditTransactionScreen = () => {
           </View>
         </View>
       </ScrollView>
+
+      <AlertDialog open={showConfirmUpdate} onOpenChange={setShowConfirmUpdate}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to update this transaction?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Text>Cancel</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction onPress={handleConfirmUpdate}>
+              <Text>Update</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Text>Cancel</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction onPress={handleConfirmDelete} className="bg-destructive">
+              <Text className="text-destructive-foreground">Delete</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </KeyboardAvoidingView>
   );
 };
