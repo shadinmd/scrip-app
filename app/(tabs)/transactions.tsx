@@ -287,9 +287,17 @@ export default function TransactionsScreen() {
 }
 
 const TransactionItem = React.memo(({ transaction }: { transaction: TransactionItemData }) => {
+  const router = useRouter();
+
   return (
     <TouchableOpacity
       activeOpacity={0.7}
+      onPress={() =>
+        router.push({
+          pathname: '/(settings)/edit-transaction',
+          params: { id: transaction.id },
+        })
+      }
       className="flex-row items-center justify-between border-b border-border/30 px-6 py-4">
       <View className="mr-4 flex-1 flex-row items-center">
         <View className="h-11 w-11 items-center justify-center rounded-2xl bg-destructive">
