@@ -202,7 +202,7 @@ const EditTransactionScreen = () => {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View className="relative">
                     <Text className="absolute left-4 top-[14px] z-10 text-lg font-bold text-muted-foreground">
-                      $
+                      ₹
                     </Text>
                     <Input
                       placeholder="0.00"
