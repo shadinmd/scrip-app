@@ -126,6 +126,7 @@ const LoginScreen = () => {
                       secureTextEntry
                       aria-labelledby="password-label"
                       className={errors.password ? 'border-destructive' : ''}
+                      autoCapitalize="none"
                     />
                   )}
                 />
