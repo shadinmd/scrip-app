@@ -17,10 +17,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
 import { useStore } from '@/lib/store';
-import { useRouter } from 'expo-router';
-import { getTodayStr, formatDisplayDate } from '@/lib/date-utils';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { formatDisplayDate } from '@/lib/date-utils';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { CalendarIcon } from 'lucide-react-native';
+import { CalendarIcon, Trash2Icon } from 'lucide-react-native';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const transactionSchema = z.object({
   amount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -33,31 +43,63 @@ const transactionSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
-const AddTransactionScreen = () => {
+const EditTransactionScreen = () => {
+  const { id } = useLocalSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showConfirmUpdate, setShowConfirmUpdate] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [pendingData, setPendingData] = useState<TransactionFormValues | null>(null);
   const { categories, fetchCategories, fetchTransactions, fetchSummary } = useStore();
   const router = useRouter();
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   const {
     control,
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       amount: '',
       description: '',
-      date: getTodayStr(),
+      date: '',
       categoryId: null,
     },
   });
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await fetchCategories();
+        const response = await api.get(`/transactions/${id}`);
+        const transaction = response.data;
+
+        reset({
+          amount: Math.abs(parseFloat(transaction.amount)).toString(),
+          description: transaction.description,
+          date: transaction.date,
+          categoryId: transaction.categoryId || null,
+        });
+      } catch (error) {
+        console.error('Error loading transaction:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to load transaction details',
+        });
+        router.back();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [id]);
 
   const currentDateValue = watch('date');
 
@@ -71,24 +113,26 @@ const AddTransactionScreen = () => {
     }
   };
 
-  const onSubmit = async (data: TransactionFormValues) => {
+  const handleConfirmUpdate = async () => {
+    if (!pendingData) return;
     setIsSubmitting(true);
+    setShowConfirmUpdate(false);
     try {
       const formattedData = {
-        ...data,
-        amount: parseFloat(data.amount),
+        ...pendingData,
+        amount: parseFloat(pendingData.amount),
       };
 
-      await api.post('/transactions', formattedData);
+      await api.put(`/transactions/${id}`, formattedData);
       await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Transaction added successfully',
+        text2: 'Transaction updated successfully',
       });
       router.back();
     } catch (error: any) {
-      console.error('Error adding transaction:', error);
+      console.error('Error updating transaction:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -96,8 +140,50 @@ const AddTransactionScreen = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setPendingData(null);
     }
   };
+
+  const onSubmit = (data: TransactionFormValues) => {
+    setPendingData(data);
+    setShowConfirmUpdate(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    setShowConfirmDelete(false);
+    try {
+      await api.delete(`/transactions/${id}`);
+      await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Transaction deleted successfully',
+      });
+      router.back();
+    } catch (error: any) {
+      console.error('Error deleting transaction:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.response?.data?.message || 'Failed to delete transaction',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDelete = () => {
+    setShowConfirmDelete(true);
+  };
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -106,10 +192,22 @@ const AddTransactionScreen = () => {
       className="bg-background">
       <ScrollView className="flex-1 px-6">
         <View className="py-8">
-          <Text className="mb-2 text-3xl font-bold text-foreground">Add Expense</Text>
-          <Text className="mb-8 text-muted-foreground">
-            Record your spending to keep track of your budget.
-          </Text>
+          <View className="mb-8 flex-row items-center justify-between">
+            <View>
+              <Text className="text-3xl font-bold text-foreground">Edit Expense</Text>
+              <Text className="text-muted-foreground">Modify your transaction details.</Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={isDeleting}
+              className="h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10">
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#ef4444" />
+              ) : (
+                <Trash2Icon size={22} color="#ef4444" />
+              )}
+            </TouchableOpacity>
+          </View>
 
           <View className="gap-6">
             <View className="gap-2">
@@ -163,13 +261,15 @@ const AddTransactionScreen = () => {
               <TouchableOpacity
                 onPress={() => setShowDatePicker(true)}
                 className="h-12 flex-row items-center justify-between rounded-md border border-input bg-muted/20 px-4">
-                <Text className="text-foreground">{formatDisplayDate(currentDateValue)}</Text>
+                <Text className="text-foreground">
+                  {currentDateValue ? formatDisplayDate(currentDateValue) : 'Select Date'}
+                </Text>
                 <CalendarIcon size={18} color="#a3a3a3" />
               </TouchableOpacity>
 
               {showDatePicker && (
                 <DateTimePicker
-                  value={new Date(currentDateValue)}
+                  value={currentDateValue ? new Date(currentDateValue) : new Date()}
                   mode="date"
                   display="default"
                   onChange={onDateChange}
@@ -215,15 +315,53 @@ const AddTransactionScreen = () => {
                 {isSubmitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-lg font-bold">Record Expense</Text>
+                  <Text className="text-lg font-bold">Update Expense</Text>
                 )}
               </Button>
             </View>
           </View>
         </View>
       </ScrollView>
+
+      <AlertDialog open={showConfirmUpdate} onOpenChange={setShowConfirmUpdate}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to update this transaction?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Text>Cancel</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction onPress={handleConfirmUpdate}>
+              <Text>Update</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Text>Cancel</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction onPress={handleConfirmDelete} className="bg-destructive">
+              <Text className="text-destructive-foreground">Delete</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </KeyboardAvoidingView>
   );
 };
 
-export default AddTransactionScreen;
+export default EditTransactionScreen;

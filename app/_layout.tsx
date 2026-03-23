@@ -6,19 +6,21 @@ import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { View, ActivityIndicator } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Notifications from 'expo-notifications';
 import { getPushToken, updatePushTokenOnBackend } from '@/lib/messaging';
+import Toast from 'react-native-toast-message';
+import { toastConfig } from '@/lib/toast-config';
 
 export { ErrorBoundary } from 'expo-router';
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
-  const { checkAuth, isLoading, isLoggedIn } = useAuthStore();
+  const { checkAuth, isLoading, isLoggedIn } = useStore();
 
   const notificationListener = useRef<Notifications.EventSubscription>(null);
   const responseListener = useRef<Notifications.EventSubscription>(null);
@@ -83,6 +85,7 @@ export default function RootLayout() {
           </Stack>
           {isLoggedIn && <Sidebar />}
           <PortalHost />
+          <Toast config={toastConfig} />
         </View>
       </ThemeProvider>
     </GestureHandlerRootView>

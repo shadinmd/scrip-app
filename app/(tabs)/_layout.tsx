@@ -3,7 +3,7 @@ import { HomeIcon, MenuIcon, LandmarkIcon, ReceiptTextIcon } from 'lucide-react-
 import { useColorScheme } from 'nativewind';
 import { NAV_THEME } from '@/lib/theme';
 import React from 'react';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { useUIStore } from '@/lib/ui-store';
 import { TouchableOpacity, View } from 'react-native';
 import { Text } from '@/components/ui/text';
@@ -27,7 +27,7 @@ export const MaterialTopTabs = withLayoutContext<
 
 export default function TabsLayout() {
   const { colorScheme } = useColorScheme();
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn } = useStore();
   const { openSidebar } = useUIStore();
   const insets = useSafeAreaInsets();
 

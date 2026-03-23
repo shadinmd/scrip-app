@@ -1,9 +1,9 @@
 import { Stack, Redirect } from 'expo-router';
 import React from 'react';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 
 export default function AuthLayout() {
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn } = useStore();
 
   if (isLoggedIn) {
     return <Redirect href="/(tabs)" />;

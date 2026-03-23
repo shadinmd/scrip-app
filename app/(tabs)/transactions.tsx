@@ -7,12 +7,13 @@ import {
 } from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useAuthStore } from '@/lib/store';
-import { ArrowUpRightIcon, CalendarIcon, XIcon, PlusIcon } from 'lucide-react-native';
+import { useStore } from '@/lib/store';
+import { ArrowUpRightIcon, CalendarIcon, XIcon, PlusIcon, AlertCircle } from 'lucide-react-native';
 import { MonthPicker } from '@/components/ui/month-picker';
 import { getCurrentMonthStr } from '@/lib/date-utils';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface TransactionHeader {
   type: 'header';
@@ -36,9 +37,10 @@ export default function TransactionsScreen() {
     transactions = [],
     categories = [],
     transactionPagination,
+    error,
     fetchTransactions,
     fetchCategories,
-  } = useAuthStore();
+  } = useStore();
 
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -136,6 +138,14 @@ export default function TransactionsScreen() {
 
   const renderHeader = () => (
     <View className="border-b border-border bg-background">
+      {error && (
+        <View className="px-6 pt-4">
+          <Alert variant="destructive" icon={AlertCircle}>
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </View>
+      )}
       <View className="pb-4 pt-4">
         <View className="mb-4 flex-row items-center justify-between px-6">
           <ScrollView
@@ -277,9 +287,17 @@ export default function TransactionsScreen() {
 }
 
 const TransactionItem = React.memo(({ transaction }: { transaction: TransactionItemData }) => {
+  const router = useRouter();
+
   return (
     <TouchableOpacity
       activeOpacity={0.7}
+      onPress={() =>
+        router.push({
+          pathname: '/(settings)/edit-transaction',
+          params: { id: transaction.id },
+        })
+      }
       className="flex-row items-center justify-between border-b border-border/30 px-6 py-4">
       <View className="mr-4 flex-1 flex-row items-center">
         <View className="h-11 w-11 items-center justify-center rounded-2xl bg-destructive">

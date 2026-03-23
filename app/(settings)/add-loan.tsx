@@ -2,12 +2,12 @@ import { useState } from 'react';
 import {
   View,
   ScrollView,
-  Alert,
   ActivityIndicator,
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { useRouter } from 'expo-router';
 import { PlusIcon, TrashIcon, SparklesIcon, XIcon, CalendarIcon } from 'lucide-react-native';
 import { MonthPicker } from '@/components/ui/month-picker';
@@ -30,10 +30,23 @@ const installmentSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
 });
 
-const loanSchema = z.object({
-  name: z.string().min(1, 'Loan name is required'),
-  installments: z.array(installmentSchema).min(1, 'At least one installment is required'),
-});
+const loanSchema = z
+  .object({
+    name: z.string().min(1, 'Loan name is required'),
+    installments: z.array(installmentSchema).min(1, 'At least one installment is required'),
+  })
+  .superRefine((data, ctx) => {
+    const months = data.installments.map((inst) => inst.date.substring(0, 7));
+    const hasDuplicateMonths = months.some((month, index) => months.indexOf(month) !== index);
+
+    if (hasDuplicateMonths) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Each installment must be in a different month',
+        path: ['installments'],
+      });
+    }
+  });
 
 type LoanFormValues = z.infer<typeof loanSchema>;
 
@@ -59,7 +72,7 @@ export default function AddLoanScreen() {
   const [showStartPicker, setShowStartMonthPicker] = useState(false);
   const [showEndPicker, setShowEndMonthPicker] = useState(false);
 
-  const { fetchLoans } = useAuthStore();
+  const { fetchLoans } = useStore();
   const router = useRouter();
 
   const {
@@ -92,7 +105,11 @@ export default function AddLoanScreen() {
 
   const handleGenerate = () => {
     if (!genAmount || !genStartMonth || !genEndMonth || !genDay) {
-      Alert.alert('Error', 'Please fill in all generator fields');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please fill in all generator fields',
+      });
       return;
     }
 
@@ -100,7 +117,11 @@ export default function AddLoanScreen() {
     const end = new Date(genEndMonth + '-01');
 
     if (end < start) {
-      Alert.alert('Error', 'End month must be after start month');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'End month must be after start month',
+      });
       return;
     }
 
@@ -148,11 +169,19 @@ export default function AddLoanScreen() {
 
       await api.post('/loans', formattedData);
       await fetchLoans();
-      Alert.alert('Success', 'Loan added successfully');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Loan added successfully',
+      });
       router.back();
     } catch (error: any) {
       console.error('Error adding loan:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Something went wrong');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.response?.data?.message || 'Something went wrong',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -293,7 +322,9 @@ export default function AddLoanScreen() {
 
               <View className="gap-4">
                 {fields.map((field, index) => (
-                  <View key={field.id} className="gap-4 rounded-xl border border-border bg-card p-4">
+                  <View
+                    key={field.id}
+                    className="gap-4 rounded-xl border border-border bg-card p-4">
                     <View className="flex-row items-center justify-between">
                       <Text className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         Installment #{index + 1}
@@ -362,7 +393,9 @@ export default function AddLoanScreen() {
               </Button>
 
               {errors.installments && (
-                <Text className="mt-2 text-xs text-destructive">{errors.installments.message}</Text>
+                <Text className="mt-2 text-sm font-bold text-destructive">
+                  {errors.installments.message || (errors.installments as any).root?.message}
+                </Text>
               )}
             </View>
 
