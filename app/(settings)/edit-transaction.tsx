@@ -36,9 +36,11 @@ const transactionSchema = z.object({
   amount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
     message: 'Must be a positive number',
   }),
+  type: z.enum(['debit', 'credit']),
   description: z.string().min(1, 'Description is required'),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
   categoryId: z.number().nullable().optional(),
+  accountId: z.number({ error: 'Please select an account' }),
 });
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
@@ -52,7 +54,9 @@ const EditTransactionScreen = () => {
   const [showConfirmUpdate, setShowConfirmUpdate] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [pendingData, setPendingData] = useState<TransactionFormValues | null>(null);
-  const { categories, fetchCategories, fetchTransactions, fetchSummary } = useStore();
+
+  const { categories, accounts, fetchCategories, fetchAccounts, fetchTransactions, fetchSummary } =
+    useStore();
   const router = useRouter();
 
   const {
@@ -66,24 +70,28 @@ const EditTransactionScreen = () => {
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       amount: '',
+      type: 'debit',
       description: '',
       date: '',
       categoryId: null,
+      accountId: 0,
     },
   });
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        await fetchCategories();
+        await Promise.all([fetchCategories(), fetchAccounts()]);
         const response = await api.get(`/transactions/${id}`);
         const transaction = response.data;
 
         reset({
           amount: Math.abs(parseFloat(transaction.amount)).toString(),
+          type: transaction.type || 'debit',
           description: transaction.description,
           date: transaction.date,
           categoryId: transaction.categoryId || null,
+          accountId: transaction.accountId,
         });
       } catch (error) {
         console.error('Error loading transaction:', error);
@@ -102,6 +110,7 @@ const EditTransactionScreen = () => {
   }, [id]);
 
   const currentDateValue = watch('date');
+  const transactionType = watch('type');
 
   const onDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -124,7 +133,11 @@ const EditTransactionScreen = () => {
       };
 
       await api.put(`/transactions/${id}`, formattedData);
-      await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
+      await Promise.all([
+        fetchTransactions({ page: 1, limit: 20 }),
+        fetchSummary(),
+        fetchAccounts(),
+      ]);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -154,7 +167,11 @@ const EditTransactionScreen = () => {
     setShowConfirmDelete(false);
     try {
       await api.delete(`/transactions/${id}`);
-      await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
+      await Promise.all([
+        fetchTransactions({ page: 1, limit: 20 }),
+        fetchSummary(),
+        fetchAccounts(),
+      ]);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -194,7 +211,7 @@ const EditTransactionScreen = () => {
         <View className="py-8">
           <View className="mb-8 flex-row items-center justify-between">
             <View>
-              <Text className="text-3xl font-bold text-foreground">Edit Expense</Text>
+              <Text className="text-3xl font-bold text-foreground">Edit Transaction</Text>
               <Text className="text-muted-foreground">Modify your transaction details.</Text>
             </View>
             <TouchableOpacity
@@ -211,14 +228,57 @@ const EditTransactionScreen = () => {
 
           <View className="gap-6">
             <View className="gap-2">
+              <Label className="text-sm font-bold">Transaction Type</Label>
+              <Controller
+                control={control}
+                name="type"
+                render={({ field: { onChange, value } }) => (
+                  <View className="flex-row gap-4">
+                    <TouchableOpacity
+                      onPress={() => onChange('debit')}
+                      className={`flex-1 items-center rounded-2xl border-2 py-4 ${
+                        value === 'debit'
+                          ? 'border-destructive bg-destructive/10'
+                          : 'border-border bg-muted/20'
+                      }`}>
+                      <Text
+                        className={`font-bold ${
+                          value === 'debit' ? 'text-destructive' : 'text-muted-foreground'
+                        }`}>
+                        Expense
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => onChange('credit')}
+                      className={`flex-1 items-center rounded-2xl border-2 py-4 ${
+                        value === 'credit'
+                          ? 'border-success bg-success/10'
+                          : 'border-border bg-muted/20'
+                      }`}>
+                      <Text
+                        className={`font-bold ${
+                          value === 'credit' ? 'text-success' : 'text-muted-foreground'
+                        }`}>
+                        Income
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            </View>
+
+            <View className="gap-2">
               <Label className="text-sm font-bold">Amount</Label>
               <Controller
                 control={control}
                 name="amount"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View className="relative">
-                    <Text className="absolute left-4 top-[14px] z-10 text-lg font-bold text-muted-foreground">
-                      ₹
+                    <Text
+                      className={`absolute left-4 top-[14px] z-10 text-lg font-bold ${
+                        transactionType === 'credit' ? 'text-success' : 'text-destructive'
+                      }`}>
+                      {transactionType === 'credit' ? '+' : '-'}₹
                     </Text>
                     <Input
                       placeholder="0.00"
@@ -226,7 +286,7 @@ const EditTransactionScreen = () => {
                       onChangeText={onChange}
                       value={value}
                       keyboardType="numeric"
-                      className={`h-14 pl-10 text-lg font-bold ${errors.amount ? 'border-destructive' : ''}`}
+                      className={`h-14 pl-12 text-lg font-bold ${errors.amount ? 'border-destructive' : ''}`}
                     />
                   </View>
                 )}
@@ -307,6 +367,36 @@ const EditTransactionScreen = () => {
               />
             </View>
 
+            <View className="gap-2">
+              <Label className="text-sm font-bold">Account</Label>
+              <Controller
+                control={control}
+                name="accountId"
+                render={({ field: { onChange, value } }) => (
+                  <View className="flex-row flex-wrap gap-2 pt-1">
+                    {accounts.map((acc) => (
+                      <TouchableOpacity
+                        key={acc.id}
+                        onPress={() => onChange(acc.id)}
+                        className={`rounded-xl border px-4 py-2 ${
+                          value === acc.id
+                            ? 'border-primary bg-primary'
+                            : 'border-border bg-muted/20'
+                        }`}>
+                        <Text
+                          className={`text-xs font-bold ${value === acc.id ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                          {acc.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              />
+              {errors.accountId && (
+                <Text className="text-xs text-destructive">{errors.accountId.message}</Text>
+              )}
+            </View>
+
             <View className="pb-12 pt-8">
               <Button
                 onPress={handleSubmit(onSubmit)}
@@ -315,7 +405,7 @@ const EditTransactionScreen = () => {
                 {isSubmitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-lg font-bold">Update Expense</Text>
+                  <Text className="text-lg font-bold">Update Transaction</Text>
                 )}
               </Button>
             </View>

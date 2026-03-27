@@ -2,7 +2,7 @@ import { View, ScrollView, RefreshControl, TouchableOpacity, Dimensions } from '
 import { Text } from '@/components/ui/text';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useStore } from '@/lib/store';
-import { ArrowUpRightIcon, WalletIcon, AlertCircle } from 'lucide-react-native';
+import { ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon, AlertCircle } from 'lucide-react-native';
 import { LineChart } from 'react-native-wagmi-charts';
 import { formatInTimeZone } from 'date-fns-tz';
 import { startOfMonth, addMonths, endOfMonth, format } from 'date-fns';
@@ -30,11 +30,12 @@ export default function HomeScreen() {
   };
 
   const currentMonthSummary = useMemo(() => {
-    if (!summary) return { expenses: 0, count: 0, dailyAvg: 0 };
+    if (!summary) return { expenses: 0, income: 0, count: 0, dailyAvg: 0 };
     const today = new Date();
 
     return {
       expenses: summary.currentMonth.expenses,
+      income: summary.currentMonth.income,
       count: summary.currentMonth.count,
       dailyAvg: summary.currentMonth.expenses / Math.max(today.getDate(), 1),
     };
@@ -89,21 +90,41 @@ export default function HomeScreen() {
       )}
       <View className="px-6 pt-6">
         <View className="rounded-[32px] border border-border bg-card p-7 shadow-sm">
-          <View className="mb-1 flex-row items-center gap-2">
-            <WalletIcon size={14} className="text-muted-foreground" />
-            <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Month Summary
-            </Text>
+          <View className="mb-4 flex-row items-center justify-between">
+            <View>
+              <View className="mb-1 flex-row items-center gap-2">
+                <View className="h-2 w-2 rounded-full bg-destructive" />
+                <Text className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+                  Expenses
+                </Text>
+              </View>
+              <Text className="text-2xl font-bold tracking-tight text-foreground">
+                ₹
+                {currentMonthSummary.expenses.toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </Text>
+            </View>
+            <View className="h-10 border-l border-border/50" />
+            <View className="items-end">
+              <View className="mb-1 flex-row items-center gap-2">
+                <View className="h-2 w-2 rounded-full bg-success" />
+                <Text className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+                  Income
+                </Text>
+              </View>
+              <Text className="text-2xl font-bold tracking-tight text-foreground">
+                ₹
+                {currentMonthSummary.income.toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </Text>
+            </View>
           </View>
-          <Text className="text-3xl font-bold tracking-tight text-foreground">
-            ₹
-            {currentMonthSummary.expenses.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </Text>
 
-          <View className="mt-6 flex-row items-center justify-between border-t border-border/50 pt-5">
+          <View className="mt-4 flex-row items-center justify-between border-t border-border/50 pt-5">
             <View>
               <Text className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
                 Next Month's Dues
@@ -187,11 +208,18 @@ export default function HomeScreen() {
 }
 
 const TransactionItem = ({ transaction }: { transaction: any }) => {
+  const isCredit = transaction.type === 'credit';
+
   return (
     <TouchableOpacity activeOpacity={0.7} className="flex-row items-center justify-between py-3">
       <View className="mr-4 flex-1 flex-row items-center">
-        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-destructive">
-          <ArrowUpRightIcon size={20} color="#fff" />
+        <View
+          className={`h-12 w-12 items-center justify-center rounded-2xl ${isCredit ? 'bg-success' : 'bg-destructive'}`}>
+          {isCredit ? (
+            <ArrowDownLeftIcon size={20} color="#fff" />
+          ) : (
+            <ArrowUpRightIcon size={20} color="#fff" />
+          )}
         </View>
         <View className="ml-4 flex-1">
           <Text className="text-base font-bold text-foreground" numberOfLines={1}>
@@ -206,8 +234,8 @@ const TransactionItem = ({ transaction }: { transaction: any }) => {
           </Text>
         </View>
       </View>
-      <Text className="text-base font-bold text-destructive">
-        -₹{Math.abs(parseFloat(transaction.amount)).toFixed(2)}
+      <Text className={`text-base font-bold ${isCredit ? 'text-success' : 'text-destructive'}`}>
+        {isCredit ? '+' : '-'}₹{Math.abs(parseFloat(transaction.amount)).toFixed(2)}
       </Text>
     </TouchableOpacity>
   );

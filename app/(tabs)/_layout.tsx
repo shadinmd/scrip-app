@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
-import { HomeIcon, MenuIcon, LandmarkIcon, ReceiptTextIcon } from 'lucide-react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { HomeIcon, MenuIcon, LandmarkIcon, ReceiptTextIcon, WalletIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { NAV_THEME } from '@/lib/theme';
 import React from 'react';
@@ -30,6 +30,7 @@ export default function TabsLayout() {
   const { isLoggedIn } = useStore();
   const { openSidebar } = useUIStore();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   if (!isLoggedIn) {
     return <Redirect href="/(auth)/login" />;
@@ -85,6 +86,14 @@ export default function TabsLayout() {
           options={{
             title: 'Transactions',
             tabBarIcon: ({ color }) => <ReceiptTextIcon color={color} size={20} />,
+          }}
+        />
+        <MaterialTopTabs.Screen
+          name="accounts"
+          options={{
+            title: 'Accounts',
+            tabBarIcon: ({ color }) => <WalletIcon color={color} size={20} />,
+            tabBarItemStyle: {},
           }}
         />
         <MaterialTopTabs.Screen
