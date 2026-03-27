@@ -9,6 +9,7 @@ import { User } from '../types/user';
 import { Category } from '../types/category';
 import { Transaction } from '../types/transaction';
 import { Loan } from '../types/loan';
+import { Account } from '../types/account';
 
 interface StoreState {
   user: User | null;
@@ -17,9 +18,10 @@ interface StoreState {
   summary: {
     currentMonth: {
       expenses: number;
+      income: number;
       count: number;
     };
-    dailyActivity: { date: string; total: number }[];
+    dailyActivity: { date: string; total: number; expenses: number; income: number }[];
   } | null;
   transactionPagination: {
     page: number;
@@ -28,6 +30,7 @@ interface StoreState {
   };
   loans: Loan[];
   categories: Category[];
+  accounts: Account[];
   isLoading: boolean;
   isLoggedIn: boolean;
   error: string | null;
@@ -42,12 +45,14 @@ interface StoreState {
       start_date?: string;
       end_date?: string;
       categoryIds?: number[];
+      accountId?: number;
     },
     append?: boolean
   ) => Promise<void>;
   fetchSummary: () => Promise<void>;
   fetchLoans: (page?: number, limit?: number) => Promise<void>;
   fetchCategories: () => Promise<void>;
+  fetchAccounts: () => Promise<void>;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -65,6 +70,7 @@ export const useStore = create<StoreState>((set, get) => ({
   },
   loans: [],
   categories: [],
+  accounts: [],
   isLoading: true,
   isLoggedIn: false,
   error: null,
@@ -76,12 +82,15 @@ export const useStore = create<StoreState>((set, get) => ({
   fetchTransactions: async (params = {}, append = false) => {
     try {
       set({ error: null });
-      const { page = 1, limit = 20, start_date, end_date, categoryIds } = params;
+      const { page = 1, limit = 20, start_date, end_date, categoryIds, accountId } = params;
       let url = `/transactions?page=${page}&limit=${limit}`;
       if (start_date) url += `&start_date=${start_date}`;
       if (end_date) url += `&end_date=${end_date}`;
       if (categoryIds && categoryIds.length > 0) {
         url += `&categoryIds=${categoryIds.join(',')}`;
+      }
+      if (accountId) {
+        url += `&accountId=${accountId}`;
       }
 
       const response = await api.get(url);
@@ -135,6 +144,17 @@ export const useStore = create<StoreState>((set, get) => ({
     } catch (error: any) {
       console.error('Error fetching loans:', error);
       set({ error: error.response?.data?.message || 'Failed to fetch loans' });
+    }
+  },
+
+  fetchAccounts: async () => {
+    try {
+      set({ error: null });
+      const response = await api.get('/accounts');
+      set({ accounts: response.data.data });
+    } catch (error: any) {
+      console.error('Error fetching accounts:', error);
+      set({ error: error.response?.data?.message || 'Failed to fetch accounts' });
     }
   },
 

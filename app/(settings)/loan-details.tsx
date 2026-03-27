@@ -260,7 +260,7 @@ export default function LoanDetailsScreen() {
                 <Text className="mb-0.5 text-[10px] font-bold uppercase text-muted-foreground">
                   Total Paid
                 </Text>
-                <Text className="text-lg font-bold text-green-600 dark:text-green-400">
+                <Text className="text-lg font-bold text-success">
                   ₹{paidAmount.toFixed(0)}
                 </Text>
               </View>
@@ -287,7 +287,7 @@ export default function LoanDetailsScreen() {
                 <View className="flex-row items-center gap-4">
                   <View
                     className={`h-10 w-10 items-center justify-center rounded-full ${
-                      inst.isPaid ? 'bg-green-600' : 'bg-muted'
+                      inst.isPaid ? 'bg-success' : 'bg-muted'
                     }`}>
                     {inst.isPaid ? (
                       <CheckCircle2Icon size={20} color="#000" />

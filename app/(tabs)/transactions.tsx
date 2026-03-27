@@ -8,7 +8,14 @@ import {
 import { Text } from '@/components/ui/text';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useStore } from '@/lib/store';
-import { ArrowUpRightIcon, CalendarIcon, XIcon, PlusIcon, AlertCircle } from 'lucide-react-native';
+import {
+  ArrowUpRightIcon,
+  ArrowDownLeftIcon,
+  CalendarIcon,
+  XIcon,
+  PlusIcon,
+  AlertCircle,
+} from 'lucide-react-native';
 import { MonthPicker } from '@/components/ui/month-picker';
 import { getCurrentMonthStr } from '@/lib/date-utils';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
@@ -24,6 +31,7 @@ interface TransactionItemData {
   type: 'item';
   id: number;
   amount: string;
+  transactionType: 'debit' | 'credit';
   description: string;
   date: string;
   category?: { name: string } | null;
@@ -129,7 +137,7 @@ export default function TransactionsScreen() {
     sortedDates.forEach((date) => {
       result.push({ type: 'header', date });
       grouped[date].forEach((t: any) => {
-        result.push({ type: 'item', ...t });
+        result.push({ type: 'item', ...t, transactionType: t.type });
       });
     });
 
@@ -288,6 +296,7 @@ export default function TransactionsScreen() {
 
 const TransactionItem = React.memo(({ transaction }: { transaction: TransactionItemData }) => {
   const router = useRouter();
+  const isCredit = transaction.transactionType === 'credit';
 
   return (
     <TouchableOpacity
@@ -300,8 +309,13 @@ const TransactionItem = React.memo(({ transaction }: { transaction: TransactionI
       }
       className="flex-row items-center justify-between border-b border-border/30 px-6 py-4">
       <View className="mr-4 flex-1 flex-row items-center">
-        <View className="h-11 w-11 items-center justify-center rounded-2xl bg-destructive">
-          <ArrowUpRightIcon size={18} color="#fff" />
+        <View
+          className={`h-11 w-11 items-center justify-center rounded-2xl ${isCredit ? 'bg-success' : 'bg-destructive'}`}>
+          {isCredit ? (
+            <ArrowDownLeftIcon size={18} color="#fff" />
+          ) : (
+            <ArrowUpRightIcon size={18} color="#fff" />
+          )}
         </View>
         <View className="ml-4 flex-1">
           <Text className="text-base font-bold text-foreground" numberOfLines={1}>
@@ -312,8 +326,8 @@ const TransactionItem = React.memo(({ transaction }: { transaction: TransactionI
           </Text>
         </View>
       </View>
-      <Text className="text-base font-bold text-destructive">
-        -₹{Math.abs(parseFloat(transaction.amount)).toFixed(2)}
+      <Text className={`text-base font-bold ${isCredit ? 'text-success' : 'text-destructive'}`}>
+        {isCredit ? '+' : '-'}₹{Math.abs(parseFloat(transaction.amount)).toFixed(2)}
       </Text>
     </TouchableOpacity>
   );

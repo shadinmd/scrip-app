@@ -26,9 +26,11 @@ const transactionSchema = z.object({
   amount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
     message: 'Must be a positive number',
   }),
+  type: z.enum(['debit', 'credit']),
   description: z.string().min(1, 'Description is required'),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
   categoryId: z.number().nullable().optional(),
+  accountId: z.number({ error: 'Please select an account' }),
 });
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
@@ -36,11 +38,13 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 const AddTransactionScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { categories, fetchCategories, fetchTransactions, fetchSummary } = useStore();
+  const { categories, accounts, fetchCategories, fetchAccounts, fetchTransactions, fetchSummary } =
+    useStore();
   const router = useRouter();
 
   useEffect(() => {
     fetchCategories();
+    fetchAccounts();
   }, []);
 
   const {
@@ -53,13 +57,23 @@ const AddTransactionScreen = () => {
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       amount: '',
+      type: 'debit',
       description: '',
       date: getTodayStr(),
       categoryId: null,
+      accountId: accounts.find((a) => a.isDefault)?.id,
     },
   });
 
+  useEffect(() => {
+    if (accounts.length > 0 && !watch('accountId')) {
+      const defaultAcc = accounts.find((a) => a.isDefault);
+      if (defaultAcc) setValue('accountId', defaultAcc.id);
+    }
+  }, [accounts]);
+
   const currentDateValue = watch('date');
+  const transactionType = watch('type');
 
   const onDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -106,12 +120,52 @@ const AddTransactionScreen = () => {
       className="bg-background">
       <ScrollView className="flex-1 px-6">
         <View className="py-8">
-          <Text className="mb-2 text-3xl font-bold text-foreground">Add Expense</Text>
+          <Text className="mb-2 text-3xl font-bold text-foreground">Add Transaction</Text>
           <Text className="mb-8 text-muted-foreground">
-            Record your spending to keep track of your budget.
+            Record your income or expense to keep track of your budget.
           </Text>
 
           <View className="gap-6">
+            <View className="gap-2">
+              <Label className="text-sm font-bold">Transaction Type</Label>
+              <Controller
+                control={control}
+                name="type"
+                render={({ field: { onChange, value } }) => (
+                  <View className="flex-row gap-4">
+                    <TouchableOpacity
+                      onPress={() => onChange('debit')}
+                      className={`flex-1 items-center rounded-2xl border-2 py-4 ${
+                        value === 'debit'
+                          ? 'border-destructive bg-destructive/10'
+                          : 'border-border bg-muted/20'
+                      }`}>
+                      <Text
+                        className={`font-bold ${
+                          value === 'debit' ? 'text-destructive' : 'text-muted-foreground'
+                        }`}>
+                        Expense
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => onChange('credit')}
+                      className={`flex-1 items-center rounded-2xl border-2 py-4 ${
+                        value === 'credit'
+                          ? 'border-success bg-success/10'
+                          : 'border-border bg-muted/20'
+                      }`}>
+                      <Text
+                        className={`font-bold ${
+                          value === 'credit' ? 'text-success' : 'text-muted-foreground'
+                        }`}>
+                        Income
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            </View>
+
             <View className="gap-2">
               <Label className="text-sm font-bold">Amount</Label>
               <Controller
@@ -119,8 +173,11 @@ const AddTransactionScreen = () => {
                 name="amount"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View className="relative">
-                    <Text className="absolute left-4 top-[14px] z-10 text-lg font-bold text-muted-foreground">
-                      ₹
+                    <Text
+                      className={`absolute left-4 top-[14px] z-10 text-lg font-bold ${
+                        transactionType === 'credit' ? 'text-success' : 'text-destructive'
+                      }`}>
+                      {transactionType === 'credit' ? '+' : '-'}₹
                     </Text>
                     <Input
                       placeholder="0.00"
@@ -128,7 +185,7 @@ const AddTransactionScreen = () => {
                       onChangeText={onChange}
                       value={value}
                       keyboardType="numeric"
-                      className={`h-14 pl-10 text-lg font-bold ${errors.amount ? 'border-destructive' : ''}`}
+                      className={`h-14 pl-12 text-lg font-bold ${errors.amount ? 'border-destructive' : ''}`}
                     />
                   </View>
                 )}
@@ -207,6 +264,36 @@ const AddTransactionScreen = () => {
               />
             </View>
 
+            <View className="gap-2">
+              <Label className="text-sm font-bold">Account</Label>
+              <Controller
+                control={control}
+                name="accountId"
+                render={({ field: { onChange, value } }) => (
+                  <View className="flex-row flex-wrap gap-2 pt-1">
+                    {accounts.map((acc) => (
+                      <TouchableOpacity
+                        key={acc.id}
+                        onPress={() => onChange(acc.id)}
+                        className={`rounded-xl border px-4 py-2 ${
+                          value === acc.id
+                            ? 'border-primary bg-primary'
+                            : 'border-border bg-muted/20'
+                        }`}>
+                        <Text
+                          className={`text-xs font-bold ${value === acc.id ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                          {acc.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              />
+              {errors.accountId && (
+                <Text className="text-xs text-destructive">{errors.accountId.message}</Text>
+              )}
+            </View>
+
             <View className="pb-12 pt-8">
               <Button
                 onPress={handleSubmit(onSubmit)}
@@ -215,7 +302,7 @@ const AddTransactionScreen = () => {
                 {isSubmitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-lg font-bold">Record Expense</Text>
+                  <Text className="text-lg font-bold">Record Transaction</Text>
                 )}
               </Button>
             </View>
