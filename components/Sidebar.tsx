@@ -13,6 +13,7 @@ import { useStore } from '@/lib/store';
 import { useUIStore } from '@/lib/ui-store';
 import { UserIcon, SettingsIcon, LogOutIcon, XIcon, ChevronRightIcon } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SIDEBAR_WIDTH = SCREEN_WIDTH * 0.75;
@@ -123,7 +124,7 @@ export const Sidebar = () => {
             <Text className="text-lg font-bold text-destructive">Logout</Text>
           </TouchableOpacity>
           <Text className="mt-6 text-center text-xs font-medium text-muted-foreground">
-            Version 1.0.0
+            {Constants.expoConfig?.extra?.version || Constants.expoConfig?.version || '1.0.0'}
           </Text>
         </View>
       </Animated.View>

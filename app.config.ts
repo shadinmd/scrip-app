@@ -1,8 +1,16 @@
 import { ExpoConfig } from 'expo/config';
+import { execSync } from 'child_process';
 
 export default (): ExpoConfig => {
   const env = process.env.EAS_BUILD_PROFILE ?? 'development';
   const isDev = env !== 'production';
+
+  let gitVersion = '1.0.0';
+  try {
+    gitVersion = execSync('git describe --tags --abbrev=0').toString().trim();
+  } catch (e) {
+    console.log('Could not get git version, falling back to 1.0.0');
+  }
 
   const packageName = isDev ? 'com.anonymous.scrip.dev' : 'com.anonymous.scrip';
   const icon = isDev ? './assets/images/dev-icon.png' : './assets/images/icon.png';
@@ -14,7 +22,7 @@ export default (): ExpoConfig => {
   return {
     name,
     slug: 'scrip',
-    version: '1.0.0',
+    version: gitVersion,
     orientation: 'portrait',
     icon,
     scheme: 'scrip',
@@ -49,6 +57,7 @@ export default (): ExpoConfig => {
       typedRoutes: true,
     },
     extra: {
+      version: gitVersion,
       router: {},
       eas: {
         projectId: 'a8c0798a-7e6e-4fbb-989e-6e43277845a1',
