@@ -1,0 +1,16 @@
+steps:
+  - name: release
+    image: node:22
+    environment:
+      GITHUB_TOKEN:
+        from_secret: docker_password
+    commands:
+      - npm install
+      - npx semantic-release
+    when:
+      event:
+        - push
+        - manual
+      branch:
+        - main
+        - dev

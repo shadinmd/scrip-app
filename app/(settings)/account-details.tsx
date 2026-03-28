@@ -79,7 +79,7 @@ export default function AccountDetailsScreen() {
         {/* Balance Card */}
         <View className="mb-10 rounded-[32px] border border-border bg-card p-7 shadow-sm">
           <View className="mb-1 flex-row items-center gap-2">
-            <WalletIcon size={14} className="text-muted-foreground" />
+            <WalletIcon size={14} color="#a3a3a3" />
             <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Current Balance
             </Text>
