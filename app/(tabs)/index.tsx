@@ -2,7 +2,7 @@ import { View, ScrollView, RefreshControl, TouchableOpacity, Dimensions } from '
 import { Text } from '@/components/ui/text';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useStore } from '@/lib/store';
-import { ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon, AlertCircle } from 'lucide-react-native';
+import { ArrowUpRightIcon, ArrowDownLeftIcon, AlertCircle } from 'lucide-react-native';
 import { LineChart } from 'react-native-wagmi-charts';
 import { formatInTimeZone } from 'date-fns-tz';
 import { startOfMonth, addMonths, endOfMonth, format } from 'date-fns';
