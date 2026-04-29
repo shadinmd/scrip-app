@@ -20,6 +20,8 @@ import {
   PencilIcon,
 } from 'lucide-react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,8 +41,13 @@ export default function LoanDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const { fetchLoans } = useStore();
+  const { fetchLoans, accounts, fetchAccounts } = useStore();
   const router = useRouter();
+
+  const [isConfirmingPaid, setIsConfirmingPaid] = useState(false);
+  const [selectedInstallmentId, setSelectedInstallmentId] = useState<number | null>(null);
+  const [shouldCreateTransaction, setShouldCreateTransaction] = useState(true);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
   const fetchLoanDetails = async () => {
     try {
@@ -61,14 +68,22 @@ export default function LoanDetailsScreen() {
 
   useEffect(() => {
     fetchLoanDetails();
+    fetchAccounts();
   }, [id]);
+
+  useEffect(() => {
+    if (accounts.length > 0 && !selectedAccountId) {
+      const defaultAcc = accounts.find((a) => a.isDefault) || accounts[0];
+      setSelectedAccountId(defaultAcc.id);
+    }
+  }, [accounts]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchLoanDetails();
   };
 
-  const handleTogglePaid = async (installmentId: number) => {
+  const handleTogglePaid = async (installmentId: number, options?: { create_transaction?: boolean; accountId?: number }) => {
     const target = loan.installments.find((i: any) => i.id === installmentId);
     if (!target) return;
 
@@ -98,7 +113,7 @@ export default function LoanDetailsScreen() {
     }
 
     try {
-      await api.patch(`/loans/installments/${installmentId}/toggle-paid`);
+      await api.patch(`/loans/installments/${installmentId}/toggle-paid`, options);
 
       const isMarkingPaid = !target.isPaid;
 
@@ -128,6 +143,27 @@ export default function LoanDetailsScreen() {
         text2: error.response?.data?.message || 'Could not update installment',
       });
     }
+  };
+
+  const onInstallmentPress = (inst: any) => {
+    if (inst.isPaid) {
+      // Direct toggle for unmarking
+      handleTogglePaid(inst.id);
+    } else {
+      // Show confirmation dialog for marking as paid
+      setSelectedInstallmentId(inst.id);
+      setIsConfirmingPaid(true);
+    }
+  };
+
+  const onConfirmPaid = () => {
+    if (selectedInstallmentId) {
+      handleTogglePaid(selectedInstallmentId, {
+        create_transaction: shouldCreateTransaction,
+        accountId: shouldCreateTransaction ? selectedAccountId || undefined : undefined,
+      });
+    }
+    setIsConfirmingPaid(false);
   };
 
   const confirmDelete = async () => {
@@ -280,7 +316,7 @@ export default function LoanDetailsScreen() {
               <TouchableOpacity
                 key={inst.id}
                 activeOpacity={0.7}
-                onPress={() => handleTogglePaid(inst.id)}
+                onPress={() => onInstallmentPress(inst)}
                 className={`flex-row items-center justify-between rounded-2xl border p-5 ${
                   inst.isPaid ? 'border-transparent bg-muted/10' : 'border-border bg-card'
                 }`}>
@@ -321,6 +357,69 @@ export default function LoanDetailsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <AlertDialog open={isConfirmingPaid} onOpenChange={setIsConfirmingPaid}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Record Payment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Would you like to record a transaction for this payment? This will update your account
+              balance.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <View className="gap-6 py-4">
+            <TouchableOpacity
+              onPress={() => setShouldCreateTransaction(!shouldCreateTransaction)}
+              className="flex-row items-center gap-3">
+              <Checkbox
+                checked={shouldCreateTransaction}
+                onCheckedChange={setShouldCreateTransaction}
+              />
+              <Label className="text-sm font-medium">Record as transaction</Label>
+            </TouchableOpacity>
+
+            {shouldCreateTransaction && (
+              <View className="gap-3">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Select Account
+                </Label>
+                <View className="flex-row flex-wrap gap-2">
+                  {accounts.map((acc) => (
+                    <TouchableOpacity
+                      key={acc.id}
+                      onPress={() => setSelectedAccountId(acc.id)}
+                      className={`rounded-xl border px-3 py-2 ${
+                        selectedAccountId === acc.id
+                          ? 'border-primary bg-primary'
+                          : 'border-border bg-muted/20'
+                      }`}>
+                      <Text
+                        className={`text-xs font-bold ${
+                          selectedAccountId === acc.id
+                            ? 'text-primary-foreground'
+                            : 'text-muted-foreground'
+                        }`}>
+                        {acc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Text>Cancel</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction onPress={onConfirmPaid}>
+              <Text>Confirm</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {showConfetti && (
         <View
           style={{ position: 'absolute', bottom: -20, left: 0, right: 0, height: 0 }}
