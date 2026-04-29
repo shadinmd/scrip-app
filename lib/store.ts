@@ -34,6 +34,7 @@ interface StoreState {
     hasNextPage: boolean;
   };
   loans: Loan[];
+  loanProjections: { timestamp: number; value: number; label: string }[];
   categories: Category[];
   accounts: Account[];
   isLoading: boolean;
@@ -59,6 +60,7 @@ interface StoreState {
     params?: { page?: number; limit?: number; showCompleted?: boolean },
     append?: boolean
   ) => Promise<void>;
+  fetchLoanProjections: () => Promise<void>;
   fetchCategories: () => Promise<void>;
   fetchAccounts: () => Promise<void>;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
@@ -82,6 +84,7 @@ export const useStore = create<StoreState>((set) => ({
     hasNextPage: false,
   },
   loans: [],
+  loanProjections: [],
   categories: [],
   accounts: [],
   isLoading: true,
@@ -168,6 +171,17 @@ export const useStore = create<StoreState>((set) => ({
     } catch (error: any) {
       console.error('Error fetching loans:', error);
       set({ error: error.response?.data?.message || 'Failed to fetch loans' });
+    }
+  },
+
+  fetchLoanProjections: async () => {
+    try {
+      set({ error: null });
+      const response = await api.get('/loans/projections');
+      set({ loanProjections: response.data });
+    } catch (error: any) {
+      console.error('Error fetching loan projections:', error);
+      set({ error: error.response?.data?.message || 'Failed to fetch loan projections' });
     }
   },
 
