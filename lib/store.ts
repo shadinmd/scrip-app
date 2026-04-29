@@ -28,6 +28,11 @@ interface StoreState {
     totalPages: number;
     hasNextPage: boolean;
   };
+  loansPagination: {
+    page: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  };
   loans: Loan[];
   categories: Category[];
   accounts: Account[];
@@ -50,7 +55,10 @@ interface StoreState {
     append?: boolean
   ) => Promise<void>;
   fetchSummary: () => Promise<void>;
-  fetchLoans: (page?: number, limit?: number) => Promise<void>;
+  fetchLoans: (
+    params?: { page?: number; limit?: number; showCompleted?: boolean },
+    append?: boolean
+  ) => Promise<void>;
   fetchCategories: () => Promise<void>;
   fetchAccounts: () => Promise<void>;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
@@ -58,12 +66,17 @@ interface StoreState {
   checkAuth: () => Promise<void>;
 }
 
-export const useStore = create<StoreState>((set, get) => ({
+export const useStore = create<StoreState>((set) => ({
   user: null,
   transactions: [],
   recentTransactions: [],
   summary: null,
   transactionPagination: {
+    page: 1,
+    totalPages: 1,
+    hasNextPage: false,
+  },
+  loansPagination: {
     page: 1,
     totalPages: 1,
     hasNextPage: false,
@@ -136,11 +149,22 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  fetchLoans: async (page = 1, limit = 10) => {
+  fetchLoans: async (params = {}, append = false) => {
     try {
       set({ error: null });
-      const response = await api.get(`/loans?page=${page}&limit=${limit}`);
-      set({ loans: response.data.data });
+      const { page = 1, limit = 10, showCompleted = false } = params;
+      const response = await api.get(
+        `/loans?page=${page}&limit=${limit}&showCompleted=${showCompleted}`
+      );
+      const { data, metadata } = response.data;
+      set((state) => ({
+        loans: append ? [...state.loans, ...data] : data,
+        loansPagination: {
+          page: metadata.page,
+          totalPages: metadata.totalPages,
+          hasNextPage: metadata.hasNextPage,
+        },
+      }));
     } catch (error: any) {
       console.error('Error fetching loans:', error);
       set({ error: error.response?.data?.message || 'Failed to fetch loans' });

@@ -1,6 +1,6 @@
-import { View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, RefreshControl, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import {
   LandmarkIcon,
@@ -14,112 +14,171 @@ import { useRouter } from 'expo-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoansScreen() {
-  const { loans, error, fetchLoans } = useStore();
+  const { loans, error, fetchLoans, loansPagination } = useStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    fetchLoans();
-  }, []);
+    fetchLoans({ page: 1, limit: 10, showCompleted });
+  }, [showCompleted]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchLoans();
+    await fetchLoans({ page: 1, limit: 10, showCompleted }, false);
     setRefreshing(false);
   };
 
-  const totalLoanAmount = loans.reduce((sum, loan) => {
-    return sum + loan.installments.reduce((s, inst) => s + parseFloat(inst.amount), 0);
-  }, 0);
+  const handleLoadMore = async () => {
+    if (loansPagination.hasNextPage && !loadingMore) {
+      setLoadingMore(true);
+      await fetchLoans({ page: loansPagination.page + 1, limit: 10, showCompleted }, true);
+      setLoadingMore(false);
+    }
+  };
 
-  const totalPaidAmount = loans.reduce((sum, loan) => {
-    return (
-      sum +
-      loan.installments
-        .filter((inst) => inst.isPaid)
-        .reduce((s, inst) => s + parseFloat(inst.amount), 0)
-    );
-  }, 0);
+  const totalLoanAmount = useMemo(() => {
+    return loans.reduce((sum, loan) => {
+      return sum + loan.installments.reduce((s, inst) => s + parseFloat(inst.amount), 0);
+    }, 0);
+  }, [loans]);
 
-  return (
-    <View className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-        }>
-        {error && (
-          <View className="px-6 pt-4">
-            <Alert variant="destructive" icon={AlertCircle}>
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+  const totalPaidAmount = useMemo(() => {
+    return loans.reduce((sum, loan) => {
+      return (
+        sum +
+        loan.installments
+          .filter((inst: any) => inst.isPaid)
+          .reduce((s: number, inst: any) => s + parseFloat(inst.amount), 0)
+      );
+    }, 0);
+  }, [loans]);
+
+  const renderHeader = () => (
+    <View>
+      {error && (
+        <View className="px-6 pt-4">
+          <Alert variant="destructive" icon={AlertCircle}>
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </View>
+      )}
+      {/* Loans Summary */}
+      <View className="px-6 pt-6">
+        <View className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <View className="mb-1 flex-row items-center gap-2">
+            <LandmarkIcon size={14} color="#a3a3a3" />
+            <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Debt
+            </Text>
           </View>
-        )}
-        {/* Loans Summary */}
-        <View className="px-6 pt-6">
-          <View className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <View className="mb-1 flex-row items-center gap-2">
-              <LandmarkIcon size={14} color="#a3a3a3" />
-              <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Total Debt
+          <Text className="text-3xl font-bold tracking-tight text-foreground">
+            ₹{(totalLoanAmount - totalPaidAmount).toFixed(2)}
+          </Text>
+
+          <View className="mt-6 flex-row gap-10 border-t border-border pt-5">
+            <View>
+              <Text className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+                Total Loan
+              </Text>
+              <Text className="text-lg font-bold text-foreground">
+                ₹{totalLoanAmount.toFixed(0)}
               </Text>
             </View>
-            <Text className="text-3xl font-bold tracking-tight text-foreground">
-              ₹{(totalLoanAmount - totalPaidAmount).toFixed(2)}
-            </Text>
-
-            <View className="mt-6 flex-row gap-10 border-t border-border pt-5">
-              <View>
-                <Text className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
-                  Total Loan
-                </Text>
-                <Text className="text-lg font-bold text-foreground">
-                  ₹{totalLoanAmount.toFixed(0)}
-                </Text>
-              </View>
-              <View>
-                <Text className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
-                  Total Paid
-                </Text>
-                <Text className="text-lg font-bold text-green-600 dark:text-green-400">
-                  ₹{totalPaidAmount.toFixed(0)}
-                </Text>
-              </View>
+            <View>
+              <Text className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+                Total Paid
+              </Text>
+              <Text className="text-lg font-bold text-green-600 dark:text-green-400">
+                ₹{totalPaidAmount.toFixed(0)}
+              </Text>
             </View>
           </View>
         </View>
+      </View>
 
-        {/* Loans List */}
-        <View className="mb-8 mt-10 px-6">
-          <View className="mb-6 flex-row items-center justify-between">
+      {/* Loans List Header */}
+      <View className="mt-10 px-6">
+        <View className="mb-6 flex-row items-center justify-between">
+          <View>
             <Text className="text-2xl font-bold tracking-tight text-foreground">Active Loans</Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              className="h-10 w-10 items-center justify-center rounded-full bg-primary shadow-lg"
-              onPress={() => router.push('/(settings)/add-loan')}>
-              <PlusIcon size={20} color="#000" />
+              onPress={() => setShowCompleted(!showCompleted)}
+              className={`mt-1.5 flex-row items-center gap-1.5 self-start rounded-full border px-3 py-1 ${
+                showCompleted ? 'border-primary/50 bg-primary/10' : 'border-border bg-muted/20'
+              }`}>
+              <View
+                className={`h-2 w-2 rounded-full ${
+                  showCompleted ? 'bg-primary' : 'bg-muted-foreground/50'
+                }`}
+              />
+              <Text
+                className={`text-[10px] font-bold uppercase tracking-widest ${
+                  showCompleted ? 'text-primary' : 'text-muted-foreground'
+                }`}>
+                {showCompleted ? 'All Loans' : 'Active Only'}
+              </Text>
             </TouchableOpacity>
           </View>
-
-          <View className="gap-4">
-            {loans.length > 0 ? (
-              loans.map((loan) => <LoanItem key={loan.id} loan={loan} />)
-            ) : (
-              <View className="items-center justify-center rounded-3xl border-2 border-dashed border-muted bg-muted/20 py-12">
-                <Text className="px-10 text-center text-lg font-medium text-muted-foreground">
-                  You don't have any active loans tracked yet.
-                </Text>
-                <Button
-                  className="mt-6 rounded-xl"
-                  onPress={() => router.push('/(settings)/add-loan')}>
-                  <Text>Add Your First Loan</Text>
-                </Button>
-              </View>
-            )}
-          </View>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            className="h-10 w-10 items-center justify-center rounded-full bg-primary shadow-lg"
+            onPress={() => router.push('/(settings)/add-loan')}>
+            <PlusIcon size={20} color="#000" />
+          </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
+    </View>
+  );
+
+  const renderFooter = () => {
+    if (!loadingMore) return <View className="h-12" />;
+    return (
+      <View className="py-6">
+        <ActivityIndicator color="#fff" />
+      </View>
+    );
+  };
+
+  const renderEmpty = () => (
+    <View className="px-6 py-12">
+      <View className="items-center justify-center rounded-3xl border-2 border-dashed border-muted bg-muted/20 py-12">
+        <Text className="px-10 text-center text-lg font-medium text-muted-foreground">
+          {showCompleted
+            ? "You don't have any loans tracked yet."
+            : "No active loans. Switch to 'All Loans' to see your history."}
+        </Text>
+        <Button className="mt-6 rounded-xl" onPress={() => router.push('/(settings)/add-loan')}>
+          <Text>Add Your First Loan</Text>
+        </Button>
+      </View>
+    </View>
+  );
+
+  return (
+    <View className="flex-1 bg-background">
+      <FlatList
+        data={loans}
+        renderItem={({ item }) => (
+          <View className="px-6">
+            <LoanItem loan={item} />
+          </View>
+        )}
+        ItemSeparatorComponent={() => <View className="h-4" />}
+        keyExtractor={(item) => item.id.toString()}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+        }
+      />
     </View>
   );
 }
