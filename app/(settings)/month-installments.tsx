@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -40,6 +40,10 @@ export default function MonthInstallmentsScreen() {
     fetchInstallments();
   };
 
+  const totalAmount = useMemo(() => {
+    return installments.reduce((sum, inst) => sum + parseFloat(inst.amount), 0);
+  }, [installments]);
+
   const formattedMonth = month ? new Date(parseInt((month as string).split('-')[0]), parseInt((month as string).split('-')[1]) - 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '';
 
   if (isLoading && !refreshing) {
@@ -52,9 +56,15 @@ export default function MonthInstallmentsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="px-6 py-6 border-b border-border bg-card">
-        <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Due In</Text>
-        <Text className="text-3xl font-bold text-foreground">{formattedMonth}</Text>
+      <View className="px-6 py-6 border-b border-border bg-card flex-row items-end justify-between">
+        <View>
+          <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Due In</Text>
+          <Text className="text-3xl font-bold text-foreground">{formattedMonth}</Text>
+        </View>
+        <View className="items-end">
+          <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Total</Text>
+          <Text className="text-2xl font-bold text-destructive">₹{totalAmount.toLocaleString()}</Text>
+        </View>
       </View>
 
       {error && (
