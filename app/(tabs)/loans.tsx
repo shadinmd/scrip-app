@@ -131,11 +131,17 @@ export default function LoansScreen() {
               <View className="flex-col">
                 <View className="h-32 flex-row items-end">
                   {loanProjections.map((d, i) => {
-                    const height =
-                      maxProjectionValue > 0 ? (d.value / maxProjectionValue) * 100 : 0;
+                    const height = maxProjectionValue > 0 ? (d.value / maxProjectionValue) * 100 : 0;
                     return (
-                      <View
+                      <TouchableOpacity
                         key={i}
+                        activeOpacity={0.7}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/(settings)/month-installments',
+                            params: { month: d.rawMonth },
+                          })
+                        }
                         className="mx-2 items-center justify-end"
                         style={{ width: 50, height: '100%' }}>
                         <Text className="mb-1 text-[7px] font-extrabold text-foreground">
@@ -143,9 +149,9 @@ export default function LoansScreen() {
                         </Text>
                         <View
                           className="w-full rounded-t-sm bg-destructive"
-                          style={{ height: `${Math.max(height, 5)}%` }}
+                          style={{ height: `${Math.max(height * 0.85, 5)}%` }}
                         />
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>

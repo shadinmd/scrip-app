@@ -34,7 +34,7 @@ interface StoreState {
     hasNextPage: boolean;
   };
   loans: Loan[];
-  loanProjections: { timestamp: number; value: number; label: string }[];
+  loanProjections: { timestamp: number; value: number; label: string; rawMonth: string }[];
   categories: Category[];
   accounts: Account[];
   isLoading: boolean;
