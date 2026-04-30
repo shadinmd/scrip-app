@@ -143,7 +143,7 @@ export default function LoansScreen() {
                         </Text>
                         <View
                           className="w-full rounded-t-sm bg-destructive"
-                          style={{ height: `${Math.max(height, 5)}%` }}
+                          style={{ height: `${Math.max(height * 0.85, 5)}%` }}
                         />
                       </View>
                     );
