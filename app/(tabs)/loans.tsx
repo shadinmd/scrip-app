@@ -1,4 +1,11 @@
-import { View, RefreshControl, TouchableOpacity, FlatList, ActivityIndicator, Dimensions } from 'react-native';
+import {
+  View,
+  RefreshControl,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useEffect, useState, useMemo } from 'react';
 import { useStore } from '@/lib/store';
@@ -12,9 +19,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'expo-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { LineChart } from 'react-native-wagmi-charts';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function LoansScreen() {
   const { loans, error, fetchLoans, loansPagination, loanProjections, fetchLoanProjections } =
@@ -119,47 +123,48 @@ export default function LoansScreen() {
               Projected Payments
             </Text>
             <Text className="rounded-md bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
-              Monthly Forecast
+              Full Forecast
             </Text>
           </View>
-          <View className="rounded-2xl border border-border bg-card p-6">
-            <View className="h-32 flex-row items-end justify-between">
-              {loanProjections.slice(0, 8).map((d, i) => {
-                const height = maxProjectionValue > 0 ? (d.value / maxProjectionValue) * 100 : 0;
-                return (
-                  <View
-                    key={i}
-                    className="items-center justify-end"
-                    style={{
-                      width: `${100 / Math.min(loanProjections.length, 8) - 2}%`,
-                      height: '100%',
-                    }}>
-                    <Text className="mb-1 text-[7px] font-extrabold text-foreground">
-                      ₹{(d.value / 1000).toFixed(1)}k
-                    </Text>
-                    <View
-                      className="w-full rounded-t-sm bg-destructive"
-                      style={{ height: `${Math.max(height, 5)}%` }}
-                    />
-                  </View>
-                );
-              })}
-            </View>
-            <View className="mt-2 flex-row justify-between border-t border-border/50 pt-2">
-              {loanProjections.slice(0, 8).map((d, i) => (
-                <View
-                  key={i}
-                  className="items-center"
-                  style={{ width: `${100 / Math.min(loanProjections.length, 8) - 2}%` }}>
-                  <Text className="text-[8px] font-bold text-muted-foreground" numberOfLines={1}>
-                    {d.label.split(' ')[0]}
-                  </Text>
-                  <Text className="text-[7px] font-medium text-muted-foreground/60">
-                    {d.label.split(' ')[1]}
-                  </Text>
+          <View className="rounded-2xl border border-border bg-card p-4">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-col">
+                <View className="h-32 flex-row items-end">
+                  {loanProjections.map((d, i) => {
+                    const height =
+                      maxProjectionValue > 0 ? (d.value / maxProjectionValue) * 100 : 0;
+                    return (
+                      <View
+                        key={i}
+                        className="mx-2 items-center justify-end"
+                        style={{ width: 50, height: '100%' }}>
+                        <Text className="mb-1 text-[7px] font-extrabold text-foreground">
+                          ₹{(d.value / 1000).toFixed(1)}k
+                        </Text>
+                        <View
+                          className="w-full rounded-t-sm bg-destructive"
+                          style={{ height: `${Math.max(height, 5)}%` }}
+                        />
+                      </View>
+                    );
+                  })}
                 </View>
-              ))}
-            </View>
+                <View className="mt-2 flex-row border-t border-border/50 pt-2">
+                  {loanProjections.map((d, i) => (
+                    <View key={i} className="mx-2 items-center" style={{ width: 50 }}>
+                      <Text
+                        className="text-[8px] font-bold text-muted-foreground"
+                        numberOfLines={1}>
+                        {d.label.split(' ')[0]}
+                      </Text>
+                      <Text className="text-[7px] font-medium text-muted-foreground/60">
+                        {d.label.split(' ')[1]}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </View>
       )}
