@@ -41,7 +41,7 @@ export default function LoanDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const { fetchLoans, accounts, fetchAccounts } = useStore();
+  const { fetchLoans, accounts, fetchAccounts, fetchLoanProjections, fetchSummary } = useStore();
   const router = useRouter();
 
   const [isConfirmingPaid, setIsConfirmingPaid] = useState(false);
@@ -134,7 +134,13 @@ export default function LoanDetailsScreen() {
         return { ...prev, installments: updatedInstallments };
       });
 
+      const now = new Date();
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       fetchLoans();
+      fetchLoanProjections({ startDate });
+      if (options?.create_transaction) {
+        fetchSummary();
+      }
     } catch (error: any) {
       console.error('Error toggling paid state:', error);
       Toast.show({

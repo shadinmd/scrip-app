@@ -50,7 +50,7 @@ const EditAccountScreen = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [pendingData, setPendingData] = useState<AccountFormValues | null>(null);
 
-  const { fetchAccounts } = useStore();
+  const { fetchAccounts, fetchSummary } = useStore();
   const router = useRouter();
 
   const {
@@ -104,7 +104,7 @@ const EditAccountScreen = () => {
       };
 
       await api.put(`/accounts/${id}`, formattedData);
-      await fetchAccounts();
+      await Promise.all([fetchAccounts(), fetchSummary()]);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -129,7 +129,7 @@ const EditAccountScreen = () => {
     setShowConfirmDelete(false);
     try {
       await api.delete(`/accounts/${id}`);
-      await fetchAccounts();
+      await Promise.all([fetchAccounts(), fetchSummary()]);
       Toast.show({
         type: 'success',
         text1: 'Success',

@@ -1,11 +1,4 @@
-import {
-  View,
-  RefreshControl,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
+import { View, RefreshControl, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useEffect, useState, useMemo } from 'react';
 import { useStore } from '@/lib/store';
@@ -19,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'expo-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { LoanProjections } from '@/components/LoanProjections';
 
 export default function LoansScreen() {
   const { loans, error, fetchLoans, loansPagination, loanProjections, fetchLoanProjections } =
@@ -29,15 +23,19 @@ export default function LoansScreen() {
   const router = useRouter();
 
   useEffect(() => {
+    const now = new Date();
+    const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
     fetchLoans({ page: 1, limit: 10, showCompleted });
-    fetchLoanProjections();
+    fetchLoanProjections({ startDate });
   }, [showCompleted]);
 
   const onRefresh = async () => {
     setRefreshing(true);
+    const now = new Date();
+    const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
     await Promise.all([
       fetchLoans({ page: 1, limit: 10, showCompleted }, false),
-      fetchLoanProjections(),
+      fetchLoanProjections({ startDate }),
     ]);
     setRefreshing(false);
   };
@@ -66,10 +64,6 @@ export default function LoansScreen() {
       );
     }, 0);
   }, [loans]);
-
-  const maxProjectionValue = useMemo(() => {
-    return Math.max(...loanProjections.map((p) => p.value), 0);
-  }, [loanProjections]);
 
   const renderHeader = () => (
     <View>
@@ -116,64 +110,7 @@ export default function LoansScreen() {
       </View>
 
       {/* Projected Payments Bar Chart */}
-      {loanProjections.length > 0 && (
-        <View className="mt-8 px-6">
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Projected Payments
-            </Text>
-            <Text className="rounded-md bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
-              Full Forecast
-            </Text>
-          </View>
-          <View className="rounded-2xl border border-border bg-card p-4">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-col">
-                <View className="h-32 flex-row items-end">
-                  {loanProjections.map((d, i) => {
-                    const height = maxProjectionValue > 0 ? (d.value / maxProjectionValue) * 100 : 0;
-                    return (
-                      <TouchableOpacity
-                        key={i}
-                        activeOpacity={0.7}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/(settings)/month-installments',
-                            params: { month: d.rawMonth },
-                          })
-                        }
-                        className="mx-2 items-center justify-end"
-                        style={{ width: 50, height: '100%' }}>
-                        <Text className="mb-1 text-[7px] font-extrabold text-foreground">
-                          ₹{(d.value / 1000).toFixed(1)}k
-                        </Text>
-                        <View
-                          className="w-full rounded-t-sm bg-destructive"
-                          style={{ height: `${Math.max(height * 0.85, 5)}%` }}
-                        />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <View className="mt-2 flex-row border-t border-border/50 pt-2">
-                  {loanProjections.map((d, i) => (
-                    <View key={i} className="mx-2 items-center" style={{ width: 50 }}>
-                      <Text
-                        className="text-[8px] font-bold text-muted-foreground"
-                        numberOfLines={1}>
-                        {d.label.split(' ')[0]}
-                      </Text>
-                      <Text className="text-[7px] font-medium text-muted-foreground/60">
-                        {d.label.split(' ')[1]}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      )}
+      <LoanProjections projections={loanProjections} />
 
       {/* Loans List Header */}
       <View className="mt-10 px-6">

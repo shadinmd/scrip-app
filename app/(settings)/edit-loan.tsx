@@ -77,7 +77,7 @@ export default function EditLoanScreen() {
   // Adjust pending states
   const [adjustAmount, setAdjustAmount] = useState('');
 
-  const { fetchLoans } = useStore();
+  const { fetchLoans, fetchLoanProjections } = useStore();
   const router = useRouter();
 
   const {
@@ -215,7 +215,11 @@ export default function EditLoanScreen() {
       };
 
       await api.put(`/loans/${id}`, formattedData);
-      await fetchLoans();
+
+      const now = new Date();
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      await Promise.all([fetchLoans(), fetchLoanProjections({ startDate })]);
+
       Toast.show({
         type: 'success',
         text1: 'Success',

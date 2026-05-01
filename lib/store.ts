@@ -34,7 +34,15 @@ interface StoreState {
     hasNextPage: boolean;
   };
   loans: Loan[];
-  loanProjections: { timestamp: number; value: number; label: string; rawMonth: string }[];
+  loanProjections: {
+    timestamp: number;
+    paid: number;
+    unpaid: number;
+    value: number;
+    lastDate: string;
+    label: string;
+    rawMonth: string;
+  }[];
   categories: Category[];
   accounts: Account[];
   isLoading: boolean;
@@ -174,10 +182,16 @@ export const useStore = create<StoreState>((set) => ({
     }
   },
 
-  fetchLoanProjections: async () => {
+  fetchLoanProjections: async (params: { startDate?: string; endDate?: string; isPaid?: boolean } = {}) => {
     try {
       set({ error: null });
-      const response = await api.get('/loans/projections');
+      const { startDate, endDate, isPaid } = params;
+      let url = '/loans/projections?';
+      if (startDate) url += `startDate=${startDate}&`;
+      if (endDate) url += `endDate=${endDate}&`;
+      if (isPaid !== undefined) url += `isPaid=${isPaid}&`;
+
+      const response = await api.get(url);
       set({ loanProjections: response.data });
     } catch (error: any) {
       console.error('Error fetching loan projections:', error);

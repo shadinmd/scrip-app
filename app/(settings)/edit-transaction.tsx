@@ -55,8 +55,15 @@ const EditTransactionScreen = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [pendingData, setPendingData] = useState<TransactionFormValues | null>(null);
 
-  const { categories, accounts, fetchCategories, fetchAccounts, fetchTransactions, fetchSummary } =
-    useStore();
+  const {
+    categories,
+    accounts,
+    fetchCategories,
+    fetchAccounts,
+    fetchTransactions,
+    fetchSummary,
+    fetchLoanProjections,
+  } = useStore();
   const router = useRouter();
 
   const {
@@ -133,10 +140,15 @@ const EditTransactionScreen = () => {
       };
 
       await api.put(`/transactions/${id}`, formattedData);
+
+      const now = new Date();
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
       await Promise.all([
         fetchTransactions({ page: 1, limit: 20 }),
         fetchSummary(),
         fetchAccounts(),
+        fetchLoanProjections({ startDate }),
       ]);
       Toast.show({
         type: 'success',
@@ -167,10 +179,15 @@ const EditTransactionScreen = () => {
     setShowConfirmDelete(false);
     try {
       await api.delete(`/transactions/${id}`);
+
+      const now = new Date();
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
       await Promise.all([
         fetchTransactions({ page: 1, limit: 20 }),
         fetchSummary(),
         fetchAccounts(),
+        fetchLoanProjections({ startDate }),
       ]);
       Toast.show({
         type: 'success',

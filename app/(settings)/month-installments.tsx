@@ -40,11 +40,27 @@ export default function MonthInstallmentsScreen() {
     fetchInstallments();
   };
 
-  const totalAmount = useMemo(() => {
-    return installments.reduce((sum, inst) => sum + parseFloat(inst.amount), 0);
+  const { paidAmount, unpaidAmount } = useMemo(() => {
+    return installments.reduce(
+      (acc, inst) => {
+        const amount = parseFloat(inst.amount);
+        if (inst.isPaid) {
+          acc.paidAmount += amount;
+        } else {
+          acc.unpaidAmount += amount;
+        }
+        return acc;
+      },
+      { paidAmount: 0, unpaidAmount: 0 }
+    );
   }, [installments]);
 
-  const formattedMonth = month ? new Date(parseInt((month as string).split('-')[0]), parseInt((month as string).split('-')[1]) - 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '';
+  const formattedMonth = month
+    ? new Date(
+        parseInt((month as string).split('-')[0]),
+        parseInt((month as string).split('-')[1]) - 1
+      ).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : '';
 
   if (isLoading && !refreshing) {
     return (
@@ -56,14 +72,36 @@ export default function MonthInstallmentsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="px-6 py-6 border-b border-border bg-card flex-row items-end justify-between">
+      <View className="flex-row items-end justify-between border-b border-border bg-card px-6 py-6">
         <View>
-          <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Due In</Text>
+          <Text className="mb-1 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+            Due In
+          </Text>
           <Text className="text-3xl font-bold text-foreground">{formattedMonth}</Text>
         </View>
         <View className="items-end">
-          <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Total</Text>
-          <Text className="text-2xl font-bold text-destructive">₹{totalAmount.toLocaleString()}</Text>
+          <View className="flex-row gap-4">
+            {paidAmount > 0 && (
+              <View className="items-end">
+                <Text className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Paid
+                </Text>
+                <Text className="text-xl font-bold text-success">
+                  ₹{paidAmount.toLocaleString()}
+                </Text>
+              </View>
+            )}
+            {unpaidAmount > 0 && (
+              <View className="items-end">
+                <Text className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Unpaid
+                </Text>
+                <Text className="text-xl font-bold text-destructive">
+                  ₹{unpaidAmount.toLocaleString()}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -83,28 +121,36 @@ export default function MonthInstallmentsScreen() {
           <TouchableOpacity
             activeOpacity={0.7}
             className="mx-6 my-2 rounded-2xl border border-border bg-card p-5"
-            onPress={() => router.push({ pathname: '/(settings)/loan-details', params: { id: item.loanId } })}
-          >
+            onPress={() =>
+              router.push({ pathname: '/(settings)/loan-details', params: { id: item.loanId } })
+            }>
             <View className="flex-row items-center justify-between">
               <View className="flex-1">
                 <Text className="text-lg font-bold text-foreground">{item.loanName}</Text>
-                <View className="flex-row items-center gap-1.5 mt-1">
+                <View className="mt-1 flex-row items-center gap-1.5">
                   <CalendarIcon size={12} color="#a3a3a3" />
                   <Text className="text-xs font-medium text-muted-foreground">
                     Due on {formatDisplayDate(item.date)}
                   </Text>
                 </View>
               </View>
-              <View className="items-end mr-4">
-                <Text className="text-lg font-bold text-foreground">₹{parseFloat(item.amount).toLocaleString()}</Text>
+              <View className="mr-4 items-end">
+                <Text
+                  className={`text-lg font-bold ${
+                    item.isPaid ? 'text-success' : 'text-destructive'
+                  }`}>
+                  ₹{parseFloat(item.amount).toLocaleString()}
+                </Text>
               </View>
               <ChevronRightIcon size={20} color="#a3a3a3" style={{ opacity: 0.5 }} />
             </View>
           </TouchableOpacity>
         )}
         ListEmptyComponent={() => (
-          <View className="flex-1 items-center justify-center py-20 px-10">
-            <Text className="text-center text-muted-foreground text-lg">No unpaid installments for this month.</Text>
+          <View className="flex-1 items-center justify-center px-10 py-20">
+            <Text className="text-center text-lg text-muted-foreground">
+              No installments for this month.
+            </Text>
           </View>
         )}
         refreshControl={
