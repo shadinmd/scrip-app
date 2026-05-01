@@ -41,13 +41,22 @@ export default function LoanDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const { fetchLoans, accounts, fetchAccounts, fetchLoanProjections, fetchSummary } = useStore();
+  const [accounts, setAccounts] = useState<any[]>([]);
   const router = useRouter();
 
   const [isConfirmingPaid, setIsConfirmingPaid] = useState(false);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<number | null>(null);
   const [shouldCreateTransaction, setShouldCreateTransaction] = useState(true);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await api.get('/accounts');
+      setAccounts(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching accounts:', err);
+    }
+  };
 
   const fetchLoanDetails = async () => {
     try {
@@ -83,7 +92,10 @@ export default function LoanDetailsScreen() {
     fetchLoanDetails();
   };
 
-  const handleTogglePaid = async (installmentId: number, options?: { create_transaction?: boolean; accountId?: number }) => {
+  const handleTogglePaid = async (
+    installmentId: number,
+    options?: { create_transaction?: boolean; accountId?: number }
+  ) => {
     const target = loan.installments.find((i: any) => i.id === installmentId);
     if (!target) return;
 
@@ -133,14 +145,6 @@ export default function LoanDetailsScreen() {
 
         return { ...prev, installments: updatedInstallments };
       });
-
-      const now = new Date();
-      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      fetchLoans();
-      fetchLoanProjections({ startDate });
-      if (options?.create_transaction) {
-        fetchSummary();
-      }
     } catch (error: any) {
       console.error('Error toggling paid state:', error);
       Toast.show({
@@ -175,7 +179,6 @@ export default function LoanDetailsScreen() {
   const confirmDelete = async () => {
     try {
       await api.delete(`/loans/${id}`);
-      await fetchLoans();
       router.back();
     } catch (error) {
       console.error('Error deleting loan:', error);

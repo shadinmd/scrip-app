@@ -1,7 +1,6 @@
 import { View, RefreshControl, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
-import React, { useEffect, useState, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   LandmarkIcon,
   PlusIcon,
@@ -10,24 +9,65 @@ import {
   AlertCircle,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { LoanProjections } from '@/components/LoanProjections';
+import api from '@/lib/api';
 
 export default function LoansScreen() {
-  const { loans, error, fetchLoans, loansPagination, loanProjections, fetchLoanProjections } =
-    useStore();
+  const [loans, setLoans] = useState<any[]>([]);
+  const [loanProjections, setLoanProjections] = useState<any[]>([]);
+  const [loansPagination, setLoansPagination] = useState<any>({
+    page: 1,
+    totalPages: 1,
+    hasNextPage: false,
+  });
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const now = new Date();
-    const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    fetchLoans({ page: 1, limit: 10, showCompleted });
-    fetchLoanProjections({ startDate });
-  }, [showCompleted]);
+  const fetchLoans = async (params: any = {}, append = false) => {
+    try {
+      setError(null);
+      const { page = 1, limit = 10, showCompleted = false } = params;
+      const response = await api.get(
+        `/loans?page=${page}&limit=${limit}&showCompleted=${showCompleted}`
+      );
+      const { data, metadata } = response.data;
+      setLoans((prev) => (append ? [...prev, ...data] : data));
+      setLoansPagination({
+        page: metadata.page,
+        totalPages: metadata.totalPages,
+        hasNextPage: metadata.hasNextPage,
+      });
+    } catch (err: any) {
+      console.error('Error fetching loans:', err);
+      setError(err.response?.data?.message || 'Failed to fetch loans');
+    }
+  };
+
+  const fetchLoanProjections = async (params: any = {}) => {
+    try {
+      const { startDate } = params;
+      let url = '/loans/projections?';
+      if (startDate) url += `startDate=${startDate}`;
+      const response = await api.get(url);
+      setLoanProjections(response.data);
+    } catch (err: any) {
+      console.error('Error fetching loan projections:', err);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const now = new Date();
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      fetchLoans({ page: 1, limit: 10, showCompleted });
+      fetchLoanProjections({ startDate });
+    }, [showCompleted])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

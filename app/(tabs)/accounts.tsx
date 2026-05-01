@@ -1,7 +1,6 @@
 import { View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import React, { useEffect, useState } from 'react';
-import { useStore } from '@/lib/store';
+import React, { useState, useCallback } from 'react';
 import {
   WalletIcon,
   PlusIcon,
@@ -10,17 +9,32 @@ import {
   CreditCardIcon,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import api from '@/lib/api';
 
 export default function AccountsScreen() {
-  const { accounts, error, fetchAccounts } = useStore();
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
+  const fetchAccounts = async () => {
+    try {
+      setError(null);
+      const response = await api.get('/accounts');
+      setAccounts(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching accounts:', err);
+      setError(err.response?.data?.message || 'Failed to fetch accounts');
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAccounts();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

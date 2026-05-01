@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import api from '@/lib/api';
 import { AlertCircle, CalendarIcon, ChevronRightIcon } from 'lucide-react-native';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -29,11 +29,13 @@ export default function MonthInstallmentsScreen() {
     }
   };
 
-  useEffect(() => {
-    if (month) {
-      fetchInstallments();
-    }
-  }, [month]);
+  useFocusEffect(
+    useCallback(() => {
+      if (month) {
+        fetchInstallments();
+      }
+    }, [month])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);

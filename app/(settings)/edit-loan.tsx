@@ -16,7 +16,6 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PlusIcon, TrashIcon, XIcon, CalendarIcon, CoinsIcon } from 'lucide-react-native';
@@ -77,7 +76,6 @@ export default function EditLoanScreen() {
   // Adjust pending states
   const [adjustAmount, setAdjustAmount] = useState('');
 
-  const { fetchLoans, fetchLoanProjections } = useStore();
   const router = useRouter();
 
   const {
@@ -215,10 +213,6 @@ export default function EditLoanScreen() {
       };
 
       await api.put(`/loans/${id}`, formattedData);
-
-      const now = new Date();
-      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      await Promise.all([fetchLoans(), fetchLoanProjections({ startDate })]);
 
       Toast.show({
         type: 'success',

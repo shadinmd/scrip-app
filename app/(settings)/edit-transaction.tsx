@@ -16,7 +16,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useStore } from '@/lib/store';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatDisplayDate } from '@/lib/date-utils';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -55,16 +54,27 @@ const EditTransactionScreen = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [pendingData, setPendingData] = useState<TransactionFormValues | null>(null);
 
-  const {
-    categories,
-    accounts,
-    fetchCategories,
-    fetchAccounts,
-    fetchTransactions,
-    fetchSummary,
-    fetchLoanProjections,
-  } = useStore();
+  const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const router = useRouter();
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      setCategories(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching categories:', err);
+    }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await api.get('/accounts');
+      setAccounts(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching accounts:', err);
+    }
+  };
 
   const {
     control,
@@ -141,15 +151,6 @@ const EditTransactionScreen = () => {
 
       await api.put(`/transactions/${id}`, formattedData);
 
-      const now = new Date();
-      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-
-      await Promise.all([
-        fetchTransactions({ page: 1, limit: 20 }),
-        fetchSummary(),
-        fetchAccounts(),
-        fetchLoanProjections({ startDate }),
-      ]);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -180,15 +181,6 @@ const EditTransactionScreen = () => {
     try {
       await api.delete(`/transactions/${id}`);
 
-      const now = new Date();
-      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-
-      await Promise.all([
-        fetchTransactions({ page: 1, limit: 20 }),
-        fetchSummary(),
-        fetchAccounts(),
-        fetchLoanProjections({ startDate }),
-      ]);
       Toast.show({
         type: 'success',
         text1: 'Success',
