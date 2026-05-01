@@ -16,7 +16,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useStore } from '@/lib/store';
 import { useRouter } from 'expo-router';
 
 const accountSchema = z.object({
@@ -31,7 +30,6 @@ type AccountFormValues = z.infer<typeof accountSchema>;
 
 const AddAccountScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { fetchAccounts } = useStore();
   const router = useRouter();
 
   const {
@@ -56,7 +54,6 @@ const AddAccountScreen = () => {
       };
 
       await api.post('/accounts', formattedData);
-      await fetchAccounts();
       Toast.show({
         type: 'success',
         text1: 'Success',

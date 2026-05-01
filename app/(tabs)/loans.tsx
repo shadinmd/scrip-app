@@ -1,14 +1,6 @@
-import {
-  View,
-  RefreshControl,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
+import { View, RefreshControl, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
-import React, { useEffect, useState, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   LandmarkIcon,
   PlusIcon,
@@ -17,27 +9,73 @@ import {
   AlertCircle,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { LoanProjections } from '@/components/LoanProjections';
+import api from '@/lib/api';
 
 export default function LoansScreen() {
-  const { loans, error, fetchLoans, loansPagination, loanProjections, fetchLoanProjections } =
-    useStore();
+  const [loans, setLoans] = useState<any[]>([]);
+  const [loanProjections, setLoanProjections] = useState<any[]>([]);
+  const [loansPagination, setLoansPagination] = useState<any>({
+    page: 1,
+    totalPages: 1,
+    hasNextPage: false,
+  });
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchLoans({ page: 1, limit: 10, showCompleted });
-    fetchLoanProjections();
-  }, [showCompleted]);
+  const fetchLoans = async (params: any = {}, append = false) => {
+    try {
+      setError(null);
+      const { page = 1, limit = 10, showCompleted = false } = params;
+      const response = await api.get(
+        `/loans?page=${page}&limit=${limit}&showCompleted=${showCompleted}`
+      );
+      const { data, metadata } = response.data;
+      setLoans((prev) => (append ? [...prev, ...data] : data));
+      setLoansPagination({
+        page: metadata.page,
+        totalPages: metadata.totalPages,
+        hasNextPage: metadata.hasNextPage,
+      });
+    } catch (err: any) {
+      console.error('Error fetching loans:', err);
+      setError(err.response?.data?.message || 'Failed to fetch loans');
+    }
+  };
+
+  const fetchLoanProjections = async (params: any = {}) => {
+    try {
+      const { startDate } = params;
+      let url = '/loans/projections?';
+      if (startDate) url += `startDate=${startDate}`;
+      const response = await api.get(url);
+      setLoanProjections(response.data);
+    } catch (err: any) {
+      console.error('Error fetching loan projections:', err);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const now = new Date();
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      fetchLoans({ page: 1, limit: 10, showCompleted });
+      fetchLoanProjections({ startDate });
+    }, [showCompleted])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
+    const now = new Date();
+    const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
     await Promise.all([
       fetchLoans({ page: 1, limit: 10, showCompleted }, false),
-      fetchLoanProjections(),
+      fetchLoanProjections({ startDate }),
     ]);
     setRefreshing(false);
   };
@@ -66,10 +104,6 @@ export default function LoansScreen() {
       );
     }, 0);
   }, [loans]);
-
-  const maxProjectionValue = useMemo(() => {
-    return Math.max(...loanProjections.map((p) => p.value), 0);
-  }, [loanProjections]);
 
   const renderHeader = () => (
     <View>
@@ -116,64 +150,7 @@ export default function LoansScreen() {
       </View>
 
       {/* Projected Payments Bar Chart */}
-      {loanProjections.length > 0 && (
-        <View className="mt-8 px-6">
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Projected Payments
-            </Text>
-            <Text className="rounded-md bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
-              Full Forecast
-            </Text>
-          </View>
-          <View className="rounded-2xl border border-border bg-card p-4">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-col">
-                <View className="h-32 flex-row items-end">
-                  {loanProjections.map((d, i) => {
-                    const height = maxProjectionValue > 0 ? (d.value / maxProjectionValue) * 100 : 0;
-                    return (
-                      <TouchableOpacity
-                        key={i}
-                        activeOpacity={0.7}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/(settings)/month-installments',
-                            params: { month: d.rawMonth },
-                          })
-                        }
-                        className="mx-2 items-center justify-end"
-                        style={{ width: 50, height: '100%' }}>
-                        <Text className="mb-1 text-[7px] font-extrabold text-foreground">
-                          ₹{(d.value / 1000).toFixed(1)}k
-                        </Text>
-                        <View
-                          className="w-full rounded-t-sm bg-destructive"
-                          style={{ height: `${Math.max(height * 0.85, 5)}%` }}
-                        />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <View className="mt-2 flex-row border-t border-border/50 pt-2">
-                  {loanProjections.map((d, i) => (
-                    <View key={i} className="mx-2 items-center" style={{ width: 50 }}>
-                      <Text
-                        className="text-[8px] font-bold text-muted-foreground"
-                        numberOfLines={1}>
-                        {d.label.split(' ')[0]}
-                      </Text>
-                      <Text className="text-[7px] font-medium text-muted-foreground/60">
-                        {d.label.split(' ')[1]}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      )}
+      <LoanProjections projections={loanProjections} />
 
       {/* Loans List Header */}
       <View className="mt-10 px-6">

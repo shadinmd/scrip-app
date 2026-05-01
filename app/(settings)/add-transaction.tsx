@@ -16,7 +16,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useStore } from '@/lib/store';
 import { useRouter } from 'expo-router';
 import { getTodayStr, formatDisplayDate } from '@/lib/date-utils';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -38,9 +37,27 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 const AddTransactionScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { categories, accounts, fetchCategories, fetchAccounts, fetchTransactions, fetchSummary } =
-    useStore();
+  const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const router = useRouter();
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      setCategories(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching categories:', err);
+    }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await api.get('/accounts');
+      setAccounts(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching accounts:', err);
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -61,7 +78,7 @@ const AddTransactionScreen = () => {
       description: '',
       date: getTodayStr(),
       categoryId: null,
-      accountId: accounts.find((a) => a.isDefault)?.id,
+      accountId: 0,
     },
   });
 
@@ -69,6 +86,7 @@ const AddTransactionScreen = () => {
     if (accounts.length > 0 && !watch('accountId')) {
       const defaultAcc = accounts.find((a) => a.isDefault);
       if (defaultAcc) setValue('accountId', defaultAcc.id);
+      else setValue('accountId', accounts[0].id);
     }
   }, [accounts]);
 
@@ -94,7 +112,6 @@ const AddTransactionScreen = () => {
       };
 
       await api.post('/transactions', formattedData);
-      await Promise.all([fetchTransactions({ page: 1, limit: 20 }), fetchSummary()]);
       Toast.show({
         type: 'success',
         text1: 'Success',

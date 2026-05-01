@@ -1,7 +1,6 @@
 import { View, ScrollView, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useState, useMemo, useCallback } from 'react';
-import { useStore } from '@/lib/store';
 import { ArrowUpRightIcon, ArrowDownLeftIcon, AlertCircle } from 'lucide-react-native';
 import { LineChart } from 'react-native-wagmi-charts';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -9,22 +8,50 @@ import { startOfMonth, addMonths, endOfMonth, format } from 'date-fns';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { TIMEZONE } from '@/lib/date-utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import api from '@/lib/api';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function HomeScreen() {
-  const { summary, recentTransactions, loans, error, fetchSummary, fetchLoans } = useStore();
+  const [summary, setSummary] = useState<any>(null);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
+  const fetchSummary = async () => {
+    try {
+      const response = await api.get('/transactions/summary');
+      const { currentMonth, dailyActivity, recentTransactions } = response.data;
+      setSummary({ currentMonth, dailyActivity });
+      setRecentTransactions(recentTransactions);
+    } catch (err: any) {
+      console.error('Error fetching summary:', err);
+      setError(err.response?.data?.message || 'Failed to fetch summary');
+    }
+  };
+
+  const fetchLoans = async () => {
+    try {
+      const response = await api.get('/loans?page=1&limit=100');
+      setLoans(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching loans:', err);
+      setError(err.response?.data?.message || 'Failed to fetch loans');
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
+      setError(null);
       Promise.all([fetchSummary(), fetchLoans()]);
     }, [])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setError(null);
     await Promise.all([fetchSummary(), fetchLoans()]);
     setRefreshing(false);
   };

@@ -17,7 +17,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
-import { useStore } from '@/lib/store';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Trash2Icon } from 'lucide-react-native';
 import {
@@ -50,7 +49,6 @@ const EditAccountScreen = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [pendingData, setPendingData] = useState<AccountFormValues | null>(null);
 
-  const { fetchAccounts } = useStore();
   const router = useRouter();
 
   const {
@@ -104,7 +102,6 @@ const EditAccountScreen = () => {
       };
 
       await api.put(`/accounts/${id}`, formattedData);
-      await fetchAccounts();
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -129,7 +126,6 @@ const EditAccountScreen = () => {
     setShowConfirmDelete(false);
     try {
       await api.delete(`/accounts/${id}`);
-      await fetchAccounts();
       Toast.show({
         type: 'success',
         text1: 'Success',

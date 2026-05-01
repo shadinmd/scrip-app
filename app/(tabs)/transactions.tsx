@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useStore } from '@/lib/store';
 import {
   ArrowUpRightIcon,
   ArrowDownLeftIcon,
@@ -19,8 +18,9 @@ import {
 import { MonthPicker } from '@/components/ui/month-picker';
 import { getCurrentMonthStr } from '@/lib/date-utils';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import api from '@/lib/api';
 
 interface TransactionHeader {
   type: 'header';
@@ -41,14 +41,14 @@ type FlattenedItem = TransactionHeader | TransactionItemData;
 
 export default function TransactionsScreen() {
   const router = useRouter();
-  const {
-    transactions = [],
-    categories = [],
-    transactionPagination,
-    error,
-    fetchTransactions,
-    fetchCategories,
-  } = useStore();
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [transactionPagination, setTransactionPagination] = useState<any>({
+    page: 1,
+    totalPages: 1,
+    hasNextPage: false,
+  });
+  const [error, setError] = useState<string | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -58,6 +58,41 @@ export default function TransactionsScreen() {
   const [endDate, setEndDate] = useState<string>('');
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndMonthPicker] = useState(false);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      setCategories(response.data.data);
+    } catch (err: any) {
+      console.error('Error fetching categories:', err);
+    }
+  };
+
+  const fetchTransactions = async (params = {}, append = false) => {
+    try {
+      setError(null);
+      const { page = 1, limit = 20, start_date, end_date, categoryIds } = params as any;
+      let url = `/transactions?page=${page}&limit=${limit}`;
+      if (start_date) url += `&start_date=${start_date}`;
+      if (end_date) url += `&end_date=${end_date}`;
+      if (categoryIds && categoryIds.length > 0) {
+        url += `&categoryIds=${categoryIds.join(',')}`;
+      }
+
+      const response = await api.get(url);
+      const { data, metadata } = response.data;
+
+      setTransactions((prev) => (append ? [...prev, ...data] : data));
+      setTransactionPagination({
+        page: metadata.page,
+        totalPages: metadata.totalPages,
+        hasNextPage: metadata.hasNextPage,
+      });
+    } catch (err: any) {
+      console.error('Error fetching transactions:', err);
+      setError(err.response?.data?.message || 'Failed to fetch transactions');
+    }
+  };
 
   const getFilterParams = useCallback(
     (page = 1) => {
@@ -70,14 +105,12 @@ export default function TransactionsScreen() {
     [selectedCategoryIds, startDate, endDate]
   );
 
-  useEffect(() => {
-    fetchCategories();
-    fetchTransactions(getFilterParams(1));
-  }, []);
-
-  useEffect(() => {
-    fetchTransactions(getFilterParams(1));
-  }, [selectedCategoryIds, startDate, endDate]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCategories();
+      fetchTransactions(getFilterParams(1));
+    }, [selectedCategoryIds, startDate, endDate])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
