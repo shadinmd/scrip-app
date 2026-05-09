@@ -1,4 +1,10 @@
-import { View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import {
+  View,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useState, useCallback } from 'react';
 import {
@@ -16,6 +22,7 @@ import api from '@/lib/api';
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
@@ -32,7 +39,12 @@ export default function AccountsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchAccounts();
+      const loadInitial = async () => {
+        if (accounts.length === 0) setIsLoading(true);
+        await fetchAccounts();
+        setIsLoading(false);
+      };
+      loadInitial();
     }, [])
   );
 
@@ -47,6 +59,14 @@ export default function AccountsScreen() {
   }, 0);
 
   const defaultAccount = accounts.find((a) => a.isDefault);
+
+  if (isLoading && !refreshing) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">

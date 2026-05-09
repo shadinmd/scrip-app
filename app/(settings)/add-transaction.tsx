@@ -36,6 +36,7 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 const AddTransactionScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -60,8 +61,11 @@ const AddTransactionScreen = () => {
   };
 
   useEffect(() => {
-    fetchCategories();
-    fetchAccounts();
+    const loadInitialData = async () => {
+      await Promise.all([fetchCategories(), fetchAccounts()]);
+      setIsLoading(false);
+    };
+    loadInitialData();
   }, []);
 
   const {
@@ -129,6 +133,14 @@ const AddTransactionScreen = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView

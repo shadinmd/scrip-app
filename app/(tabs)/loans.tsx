@@ -23,6 +23,7 @@ export default function LoansScreen() {
     hasNextPage: false,
   });
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -62,10 +63,17 @@ export default function LoansScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const now = new Date();
-      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      fetchLoans({ page: 1, limit: 10, showCompleted });
-      fetchLoanProjections({ startDate });
+      const loadInitial = async () => {
+        if (loans.length === 0) setIsLoading(true);
+        const now = new Date();
+        const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        await Promise.all([
+          fetchLoans({ page: 1, limit: 10, showCompleted }),
+          fetchLoanProjections({ startDate }),
+        ]);
+        setIsLoading(false);
+      };
+      loadInitial();
     }, [showCompleted])
   );
 
@@ -210,6 +218,14 @@ export default function LoansScreen() {
       </View>
     </View>
   );
+
+  if (isLoading && !refreshing) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">

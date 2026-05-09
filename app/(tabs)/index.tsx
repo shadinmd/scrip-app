@@ -1,4 +1,11 @@
-import { View, ScrollView, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
+import {
+  View,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
 import { Text } from '@/components/ui/text';
 import React, { useState, useMemo, useCallback } from 'react';
 import { ArrowUpRightIcon, ArrowDownLeftIcon, AlertCircle } from 'lucide-react-native';
@@ -17,6 +24,7 @@ export default function HomeScreen() {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [loans, setLoans] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
@@ -44,9 +52,14 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setError(null);
-      Promise.all([fetchSummary(), fetchLoans()]);
-    }, [])
+      const loadInitial = async () => {
+        setError(null);
+        if (!summary && loans.length === 0) setIsLoading(true);
+        await Promise.all([fetchSummary(), fetchLoans()]);
+        setIsLoading(false);
+      };
+      loadInitial();
+    }, [summary, loans.length])
   );
 
   const onRefresh = async () => {
@@ -100,6 +113,14 @@ export default function HomeScreen() {
       };
     });
   }, [summary]);
+
+  if (isLoading && !refreshing) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView

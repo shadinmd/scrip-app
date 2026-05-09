@@ -6,7 +6,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Text } from '@/components/ui/text';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, {  useState, useCallback, useMemo } from 'react';
 import {
   ArrowUpRightIcon,
   ArrowDownLeftIcon,
@@ -49,7 +49,7 @@ export default function TransactionsScreen() {
     hasNextPage: false,
   });
   const [error, setError] = useState<string | null>(null);
-
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -107,8 +107,12 @@ export default function TransactionsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchCategories();
-      fetchTransactions(getFilterParams(1));
+      const loadInitial = async () => {
+        if (transactions.length === 0) setIsLoading(true);
+        await Promise.all([fetchCategories(), fetchTransactions(getFilterParams(1))]);
+        setIsLoading(false);
+      };
+      loadInitial();
     }, [selectedCategoryIds, startDate, endDate])
   );
 
@@ -278,6 +282,14 @@ export default function TransactionsScreen() {
     }
     return <TransactionItem transaction={item} />;
   };
+
+  if (isLoading && !refreshing) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">
